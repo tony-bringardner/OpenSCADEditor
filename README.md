@@ -3,12 +3,13 @@
 <html>
 <head>
 <meta charset="ISO-8859-1">
+<title>OpenSCAD Editor</title>
 </head>
 <body>
 <h1>Java based OpenSCAD editor</h1>
 
 <h1>
-OpenSCADEditor is a java based eiditor designed to improve productivity for users of OpenSCAD.<BR> <a href="http://www.openscad.org/">OpenSCAD</a> is software for creating solid 3D CAD objects. 
+OpenSCADEditor is a java based editor designed to improve productivity for users of OpenSCAD.<BR> <a href="http://www.openscad.org/">OpenSCAD</a> is software for creating solid 3D CAD objects. 
 
 </h1>
 <h2>Features</h2>
@@ -21,6 +22,8 @@ OpenSCADEditor is a java based eiditor designed to improve productivity for user
 	<li>Undo and Redo
 	<li>Links with OpenSCAD for easy preview and exporting 3d models.
 </ul>
+
+Much of the functionality provided here is due to the <em>AWESOME</em> <a href="https://github.com/bobbylight/RSyntaxTextArea">RSyntaxTextArea</a> library.
 
 <h3>Keyboard Shortcuts (Hot Keys)</h3>
 <table border="1" cellpadding="3" cellspacing="0" style="border: 1px solid gray; border-collapse: collapse;">
