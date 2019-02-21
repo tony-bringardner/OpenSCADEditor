@@ -1,7 +1,7 @@
 # OpenSCADEditor
 Java based OpenSCAD editor
 <h1>
-	OpenSCADEditor is a java based eiditor designed to improve productivity of OpenSCADl<a href="http://www.openscad.org/">OpenSCAD</a> is software for creating solid 3D CAD objects. 
+	OpenSCADEditor is a java based eiditor designed to improve productivity for users of OpenSCAD.<BR> <a href="http://www.openscad.org/">OpenSCAD</a> is software for creating solid 3D CAD objects. 
 	
 </h1>
 <h2>Features</h2>
