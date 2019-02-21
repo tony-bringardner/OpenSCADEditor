@@ -3,7 +3,6 @@
 <html>
 <head>
 <meta charset="ISO-8859-1">
-<title>OpenSCAD Editor</title>
 </head>
 <body>
 <h1>Java based OpenSCAD editor</h1>
