@@ -1,0 +1,1 @@
+T:\Applications\OpenSCAD\openscad.exe -o T:/Temp/AAA.stl -D quality="production" T:/Temp/Editor7999682531378711606.scad
