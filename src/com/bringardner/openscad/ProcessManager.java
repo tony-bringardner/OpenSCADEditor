@@ -6,18 +6,39 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ProcessManager {
 
 	private Process process;
-	private BufferedReader br;
 	private boolean restartOnClose=true;
 	private File previewFile;
 	private Thread thread;
 	private String processResult="";
-
+	private List<String> args;
+	
+	
 	public ProcessManager() {
 	}
+
+	
+	
+	public List<String> getArgs() {
+		return args;
+	}
+
+	public void setArgs(String... command) {
+        this.args = new ArrayList<>(command.length);
+        for (String arg : command)
+            this.args.add(arg);
+    }
+
+	public void setArgs(List<String> args) {
+		this.args = args;
+	}
+
+
 
 	public String getProcessResult() {
 		return processResult;
@@ -34,16 +55,28 @@ public class ProcessManager {
 				@Override
 				public void run() {
 					do {
+						BufferedReader br=null;
 						try {
-							process = new ProcessBuilder(Configuration.getInstance().getExecPath(),
-									getPreviewFile().getAbsolutePath()).start();
+							if( args == null || args.size()==0) {
+								process = new ProcessBuilder(Configuration.getInstance().getExecPath(),	getPreviewFile().getAbsolutePath()).start();
+							} else {
+								List<String> myargs = new ArrayList<String>();
+								myargs.add(Configuration.getInstance().getExecPath());
+								myargs.addAll(args);
+								process = new ProcessBuilder(myargs).start();
+							}
 							br = new BufferedReader(new InputStreamReader(process.getInputStream()));
+							BufferedReader err = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 							String line;
 
+							
 							while ((line = br.readLine()) != null) {
 								processResult += line+"\n";
 							}
-							
+							while ((line = err.readLine()) != null) {
+								processResult += line+"\n";
+							}
+							System.out.println("End");
 						} catch(Throwable e) {
 							processResult += e.toString()+"\n";
 							if( br != null ) {
@@ -72,22 +105,6 @@ public class ProcessManager {
 	public Process getProcess() {
 		return process;
 	}
-
-
-	public void setProcess(Process process) {
-		this.process = process;
-	}
-
-
-	public BufferedReader getBr() {
-		return br;
-	}
-
-
-	public void setBr(BufferedReader br) {
-		this.br = br;
-	}
-
 
 	public boolean isRestartOnClose() {
 		return restartOnClose;

@@ -170,6 +170,14 @@ public class Editor extends JFrame {
 				actionReload();
 			}
 		});
+		
+		JMenuItem mntmExportStl = new JMenuItem("Export STL");
+		mntmExportStl.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionExportStl();
+			}
+		});
+		mnFile.add(mntmExportStl);
 		mnFile.add(mntmReload);
 
 		
@@ -222,7 +230,7 @@ public class Editor extends JFrame {
 				Component horizontalStrut = Box.createHorizontalStrut(5);
 				panel.add(horizontalStrut);
 				btnOpen.setPreferredSize(new Dimension(32, 32));
-				btnOpen.setToolTipText("Open - CTRO");
+				btnOpen.setToolTipText("Open - CTR-O");
 				btnOpen.setIcon(new ImageIcon(Editor.class.getResource("/Open-32.png")));
 				panel.add(btnOpen);
 				
@@ -234,6 +242,21 @@ public class Editor extends JFrame {
 				btnPreview.setPreferredSize(new Dimension(32, 32));
 				btnPreview.setToolTipText("Preview - F5");
 				btnPreview.setIcon(new ImageIcon(Editor.class.getResource("/preview-33.png")));
+				
+				Component horizontalStrut_4 = Box.createHorizontalStrut(20);
+				panel.add(horizontalStrut_4);
+				
+				JButton btnExportStl = new JButton("");
+				btnExportStl.setToolTipText("Export STL");
+				btnExportStl.setPreferredSize(new Dimension(32, 32));
+				btnExportStl.setIcon(new ImageIcon(Editor.class.getResource("/export.png")));
+				
+				btnExportStl.addActionListener(new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						actionExportStl();
+					}
+				});
+				panel.add(btnExportStl);
 				
 				Component horizontalStrut_3 = Box.createHorizontalStrut(200);
 				panel.add(horizontalStrut_3);
@@ -470,6 +493,42 @@ public class Editor extends JFrame {
 		});
 		
 		
+	}
+
+	private File lastExport;
+	protected void actionExportStl() {
+		ExportDialog dialog = new ExportDialog();
+		//  make sure the process is running and the file is current
+		actionPreview();
+		try {
+			dialog.start(previewProcess.getPreviewFile());
+		} catch (IOException e) {
+			logError(e, "Can't export");
+			return;
+		}
+		
+		JFileChooser fc = new JFileChooser();
+		fc.setFileHidingEnabled(true);
+		if( lastExport != null ) {
+			fc.setSelectedFile(lastExport);
+		} else if( lastDir != null ) {
+			String name = "new.stl";
+			if( file != null ) {
+				name = file.getName();
+				if( name.endsWith(".scad")) {
+					name = name.substring(0,name.length()-5)+".stl";
+				}
+			}
+			fc.setSelectedFile(new File(lastDir,name));
+		}
+
+		if( fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+			lastExport = fc.getSelectedFile();
+			dialog.save(lastExport,this);
+		} else {
+			dialog.cancel();
+		}
+
 	}
 
 	protected void actionPreferences() {
@@ -864,7 +923,7 @@ public class Editor extends JFrame {
 
 	}
 
-	private void logError(Throwable error, String title) {
+	public void logError(Throwable error, String title) {
 		//	error.printStackTrace();
 		if(SwingUtilities.isEventDispatchThread()) {
 			JOptionPane.showMessageDialog(this, error.toString(), title, JOptionPane.ERROR_MESSAGE);
