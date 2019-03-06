@@ -76,7 +76,6 @@ public class ProcessManager {
 							while ((line = err.readLine()) != null) {
 								processResult += line+"\n";
 							}
-							System.out.println("End");
 						} catch(Throwable e) {
 							processResult += e.toString()+"\n";
 							if( br != null ) {

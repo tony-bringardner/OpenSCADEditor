@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
@@ -18,6 +19,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +28,7 @@ import java.util.Scanner;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
+import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -60,10 +63,11 @@ public class Editor extends JFrame {
 	public static final String KEY_BACKUPDIR = "backupdir";
 	public static final String KEY_EXEC_LOCATION = "execlocation";
 	public static final String KEY_MIN_VAR_LEN = "minVarLen";
-	
-	
+
+	private Object autocompleteMutex = new Object();
+	private Object previewMutex = new Object();
 	private static List<String> recentFiles = new ArrayList<>();
-	
+
 	private JPanel contentPane;
 	private String originalText = "";
 	private File file;
@@ -79,13 +83,13 @@ public class Editor extends JFrame {
 	private FileBackupManager backupManager = new FileBackupManager();
 	private RTextScrollPane scrollPane;
 
-	
+
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		
+
 		String tmp = prefs.get(KEY_RECENT, "");
 		if( !tmp.isEmpty()) {
 			tmp = tmp.substring(1);
@@ -120,6 +124,18 @@ public class Editor extends JFrame {
 	 * Create the frame.
 	 */
 	public Editor() {
+
+		try {
+			URL imgUrl = Editor.class.getResource("/openscad2.png");
+
+			Image img = ImageIO.read(imgUrl);
+			setIconImage(img);
+		} catch (IOException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
+
+
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		setBounds(100, 100, 900, 600);
 		setLocationRelativeTo(null);
@@ -170,7 +186,7 @@ public class Editor extends JFrame {
 				actionReload();
 			}
 		});
-		
+
 		JMenuItem mntmExportStl = new JMenuItem("Export STL");
 		mntmExportStl.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -180,7 +196,7 @@ public class Editor extends JFrame {
 		mnFile.add(mntmExportStl);
 		mnFile.add(mntmReload);
 
-		
+
 		JMenuItem mntmPreferences = new JMenuItem("Preferences");
 		mntmPreferences.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -200,82 +216,82 @@ public class Editor extends JFrame {
 		});
 
 		mnFile.add(mntmExit);
-		
+
 		JPanel panel = new JPanel();
 		FlowLayout flowLayout_1 = (FlowLayout) panel.getLayout();
 		flowLayout_1.setAlignment(FlowLayout.LEFT);
 		menuBar.add(panel);
-				
-				JButton btnSave = new JButton("");
-				btnSave.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						actionSave();
-					}
-				});
-				
-				Component horizontalStrut_2 = Box.createHorizontalStrut(20);
-				panel.add(horizontalStrut_2);
-				btnSave.setPreferredSize(new Dimension(32, 32));
-				btnSave.setToolTipText("Save  CTR-S");
-				btnSave.setIcon(new ImageIcon(Editor.class.getResource("/Save-32.png")));
-				panel.add(btnSave);
-				
-				JButton btnOpen = new JButton("");
-				btnOpen.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						actionOpen();
-					}
-				});
-				
-				Component horizontalStrut = Box.createHorizontalStrut(5);
-				panel.add(horizontalStrut);
-				btnOpen.setPreferredSize(new Dimension(32, 32));
-				btnOpen.setToolTipText("Open - CTR-O");
-				btnOpen.setIcon(new ImageIcon(Editor.class.getResource("/Open-32.png")));
-				panel.add(btnOpen);
-				
-				Component horizontalStrut_1 = Box.createHorizontalStrut(5);
-				panel.add(horizontalStrut_1);
-		
-				JButton btnPreview = new JButton("");
-				panel.add(btnPreview);
-				btnPreview.setPreferredSize(new Dimension(32, 32));
-				btnPreview.setToolTipText("Preview - F5");
-				btnPreview.setIcon(new ImageIcon(Editor.class.getResource("/preview-33.png")));
-				
-				Component horizontalStrut_4 = Box.createHorizontalStrut(20);
-				panel.add(horizontalStrut_4);
-				
-				JButton btnExportStl = new JButton("");
-				btnExportStl.setToolTipText("Export STL");
-				btnExportStl.setPreferredSize(new Dimension(32, 32));
-				btnExportStl.setIcon(new ImageIcon(Editor.class.getResource("/export.png")));
-				
-				btnExportStl.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						actionExportStl();
-					}
-				});
-				panel.add(btnExportStl);
-				
-				Component horizontalStrut_3 = Box.createHorizontalStrut(200);
-				panel.add(horizontalStrut_3);
-				
-				JButton btnHelp = new JButton("");
-				panel.add(btnHelp);
-				btnHelp.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						actionHelp();
-					}
-				});
-				btnHelp.setPreferredSize(new Dimension(32, 32));
-				btnHelp.setIcon(new ImageIcon(Editor.class.getResource("/Help.png")));
-				btnHelp.setToolTipText("Help");
-				btnPreview.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						actionPreview();
-					}
-				});
+
+		JButton btnSave = new JButton("");
+		btnSave.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionSave();
+			}
+		});
+
+		Component horizontalStrut_2 = Box.createHorizontalStrut(20);
+		panel.add(horizontalStrut_2);
+		btnSave.setPreferredSize(new Dimension(32, 32));
+		btnSave.setToolTipText("Save  CTR-S");
+		btnSave.setIcon(new ImageIcon(Editor.class.getResource("/Save-32.png")));
+		panel.add(btnSave);
+
+		JButton btnOpen = new JButton("");
+		btnOpen.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionOpen();
+			}
+		});
+
+		Component horizontalStrut = Box.createHorizontalStrut(5);
+		panel.add(horizontalStrut);
+		btnOpen.setPreferredSize(new Dimension(32, 32));
+		btnOpen.setToolTipText("Open - CTR-O");
+		btnOpen.setIcon(new ImageIcon(Editor.class.getResource("/Open-32.png")));
+		panel.add(btnOpen);
+
+		Component horizontalStrut_1 = Box.createHorizontalStrut(5);
+		panel.add(horizontalStrut_1);
+
+		JButton btnPreview = new JButton("");
+		panel.add(btnPreview);
+		btnPreview.setPreferredSize(new Dimension(32, 32));
+		btnPreview.setToolTipText("Preview - F5");
+		btnPreview.setIcon(new ImageIcon(Editor.class.getResource("/preview-33.png")));
+
+		Component horizontalStrut_4 = Box.createHorizontalStrut(20);
+		panel.add(horizontalStrut_4);
+
+		JButton btnExportStl = new JButton("");
+		btnExportStl.setToolTipText("Export STL");
+		btnExportStl.setPreferredSize(new Dimension(32, 32));
+		btnExportStl.setIcon(new ImageIcon(Editor.class.getResource("/export.png")));
+
+		btnExportStl.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionExportStl();
+			}
+		});
+		panel.add(btnExportStl);
+
+		Component horizontalStrut_3 = Box.createHorizontalStrut(200);
+		panel.add(horizontalStrut_3);
+
+		JButton btnHelp = new JButton("");
+		panel.add(btnHelp);
+		btnHelp.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionHelp();
+			}
+		});
+		btnHelp.setPreferredSize(new Dimension(32, 32));
+		btnHelp.setIcon(new ImageIcon(Editor.class.getResource("/Help.png")));
+		btnHelp.setToolTipText("Help");
+		btnPreview.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionPreview();
+			}
+		});
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		contentPane.setLayout(new BorderLayout(0, 0));
@@ -317,7 +333,7 @@ public class Editor extends JFrame {
 							loc3.x+=loc.x;
 							loc3.y+=loc.y;
 						}
-						
+
 						dialog.setLocation(loc3);
 						int line = dialog.getLine();
 						if( line >0) {
@@ -325,7 +341,7 @@ public class Editor extends JFrame {
 								editorPane.setCaretPosition(editorPane.getLineStartOffset(line-1));
 							} catch (BadLocationException e1) {
 							}
-							
+
 						}
 					} else if( c == KeyEvent.VK_B ) {
 						actionPreview();
@@ -478,7 +494,7 @@ public class Editor extends JFrame {
 				}
 			}
 		}).start();
-	
+
 		SwingUtilities.invokeLater(new Runnable() {
 
 			@Override
@@ -491,8 +507,8 @@ public class Editor extends JFrame {
 				}
 			}
 		});
-		
-		
+
+
 	}
 
 	private File lastExport;
@@ -506,7 +522,7 @@ public class Editor extends JFrame {
 			logError(e, "Can't export");
 			return;
 		}
-		
+
 		JFileChooser fc = new JFileChooser();
 		fc.setFileHidingEnabled(true);
 		if( lastExport != null ) {
@@ -535,13 +551,13 @@ public class Editor extends JFrame {
 		PreferencesFrame frame = new PreferencesFrame(Editor.this);
 		frame.setLocationRelativeTo(null);
 		SwingUtilities.invokeLater(new Runnable() {
-			
+
 			@Override
 			public void run() {
 				frame.setVisible(true);						
 			}
 		});
-		
+
 	}
 
 	protected void actionHelp() {
@@ -552,62 +568,64 @@ public class Editor extends JFrame {
 		} catch (IOException e) {
 			logError(e, "Open help dialog");
 		}
-		
+
 	}
 
-	protected synchronized void updateAutoComplete(boolean forceUpdate) {
+	protected  void updateAutoComplete(boolean forceUpdate) {
+		synchronized (autocompleteMutex) {
 
-		//  This should never be called from the dispatch thread but we'll protect against it anyway.
-		if( !SwingUtilities.isEventDispatchThread()) {
-			if( forceUpdate || hasChanged()) {
-				boolean changed = false;
-				String code = editorPane.getText();
-				List<ModuleAutoCompleteManager> tmp = ModuleAutoCompleteManager.getModules(code);
-				if( tmp != null ) { //  we don't want to update the auto complete.
-					Map<String, IncludeFile> inc = IncludeFile.findAllIncluded(code, file);
-					if( inc != null ) {
-						if( !inc.equals(included)) {
-							included = inc;
+
+			//  This should never be called from the dispatch thread but we'll protect against it anyway.
+			if( !SwingUtilities.isEventDispatchThread()) {
+				if( forceUpdate || hasChanged()) {
+					boolean changed = false;
+					String code = editorPane.getText();
+					List<ModuleAutoCompleteManager> tmp = ModuleAutoCompleteManager.getModules(code);
+					if( tmp != null ) { //  we don't want to update the auto complete.
+						Map<String, IncludeFile> inc = IncludeFile.findAllIncluded(code, file);
+						if( inc != null ) {
+							if( !inc.equals(included)) {
+								included = inc;
+							}
 						}
-					}
 
-					//System.out.println("Included files="+included);
-					for (IncludeFile file : included.values()) {
-						List<ModuleAutoCompleteManager> tmp2 = ModuleAutoCompleteManager.getModules(file.getCode());
-						if( tmp2 != null ) {
-							//System.out.println("adding for included="+tmp2);
-							for (ModuleAutoCompleteManager compete : tmp2) {
-								if( !tmp.contains(compete)) {
-									tmp.add(compete);
+						//System.out.println("Included files="+included);
+						for (IncludeFile file : included.values()) {
+							List<ModuleAutoCompleteManager> tmp2 = ModuleAutoCompleteManager.getModules(file.getCode());
+							if( tmp2 != null ) {
+								//System.out.println("adding for included="+tmp2);
+								for (ModuleAutoCompleteManager compete : tmp2) {
+									if( !tmp.contains(compete)) {
+										tmp.add(compete);
+									}
 								}
 							}
 						}
+
+						if(!modules.equals(tmp)) {
+							modules = tmp;
+							changed = true;						
+						} 
+
+						List<String> vars = VariableManager.findVariables(code, editorPane.getCaretPosition(),modules);
+						if( !vars.equals(variables)) {
+							variables = vars;
+							changed = true;
+						}
+
+						if( changed) {
+							createAutoComplete();
+						}
 					}
-
-					if(!modules.equals(tmp)) {
-						modules = tmp;
-						changed = true;						
-					} 
-
-					List<String> vars = VariableManager.findVariables(code, editorPane.getCaretPosition(),modules);
+				} else {
+					List<String> vars = VariableManager.findVariables(editorPane.getText(), editorPane.getCaretPosition(),modules);
 					if( !vars.equals(variables)) {
 						variables = vars;
-						changed = true;
-					}
-
-					if( changed) {
 						createAutoComplete();
 					}
 				}
-			} else {
-				List<String> vars = VariableManager.findVariables(editorPane.getText(), editorPane.getCaretPosition(),modules);
-				if( !vars.equals(variables)) {
-					variables = vars;
-					createAutoComplete();
-				}
-			}
-		} 
-
+			} 
+		}
 	}
 
 	protected void actionFindDecloration() {
@@ -710,7 +728,7 @@ public class Editor extends JFrame {
 
 			@Override
 			public void run() {
-				synchronized (Editor.this) {
+				synchronized (previewMutex) {
 					if( previewProcess == null ) {
 						previewProcess = new ProcessManager();
 						previewProcess.start();
@@ -817,13 +835,18 @@ public class Editor extends JFrame {
 		if( file != null ) {
 			String nm = file.getAbsolutePath();
 			if(!hasChanged()) {
-				setTitle(nm);
+				setMyTitle(nm);
 			} else {
-				setTitle("* "+nm);
+				setMyTitle("* "+nm);
 			}
 		} else {
-			setTitle("");
+			setMyTitle("");
 		}
+
+	}
+
+	private void setMyTitle(final String nm) {
+		SwingUtilities.invokeLater(()-> setTitle(nm));		
 	}
 
 	private boolean hasChanged() {
@@ -843,8 +866,8 @@ public class Editor extends JFrame {
 		for(Template t : config.getTemplates()) {
 			t.addCompetion(provider);
 		}
-		
-		
+
+
 		for(String var : variables) {
 			provider.addCompletion(new ShorthandCompletion(provider, var+"-variable", var));
 		}
@@ -959,7 +982,7 @@ public class Editor extends JFrame {
 		try {
 			originalText = editorPane.getText();
 			backupManager.save(tmp, editorPane.getText());
-			setTitle(tmp.getName());
+			setMyTitle(tmp.getName());
 		} catch (IOException e) {
 			logError(e, "Can't save to "+tmp);
 		} 
@@ -990,24 +1013,24 @@ public class Editor extends JFrame {
 				lastDir = file.getParentFile();
 			}
 		}
-		
+
 		JFileChooser fc = new JFileChooser(lastDir);
 		fc.setFileHidingEnabled(true);
 		fc.setAcceptAllFileFilterUsed(true);
 		fc.addChoosableFileFilter(new javax.swing.filechooser.FileFilter() {
-			
+
 			@Override
 			public String getDescription() {
 				return ".scad";
 			}
-			
+
 			@Override
 			public boolean accept(File f) {
 				return f.getName().toLowerCase().endsWith(".scad");
 			}
 		});
-		
-		
+
+
 		if( file != null ) {
 			fc.setSelectedFile(file);
 		} 
