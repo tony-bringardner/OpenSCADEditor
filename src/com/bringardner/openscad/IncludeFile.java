@@ -96,7 +96,7 @@ public class IncludeFile {
 				if( code == null || (file != null && file.lastModified() != lastModified) ) {
 					if( file != null && file.exists()) {
 						try {
-							code = Editor.readFile(file);
+							code = new String(Editor.readFile(file));
 						} catch (IOException e) {
 						}
 					}
@@ -225,7 +225,7 @@ public class IncludeFile {
 		List<String> libs = getLibraryFolders();
 		System.out.println(libs);
 		File scadFile = new File("T:\\Applications\\OpenSCAD\\workspace\\SmalleDriverPeg.scad");
-		String code = Editor.readFile(scadFile);
+		String code = new String(Editor.readFile(scadFile));
 		Map<String, IncludeFile> use = findAllIncluded( code, scadFile);
 		Map<String, IncludeFile> use2 = findIncluded("include", code, scadFile);
 		System.out.println("use="+use);

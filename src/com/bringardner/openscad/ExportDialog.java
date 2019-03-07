@@ -74,8 +74,8 @@ public class ExportDialog extends JDialog {
 
 	}
 
-	public void start(File previewFile) throws IOException  {
-			this.tmpFile = File.createTempFile("Editor", ".stl");
+	public void start(File previewFile,String type) throws IOException  {
+			this.tmpFile = File.createTempFile("Editor", type);
 			process = new ProcessManager();
 			process.setRestartOnClose(false);
 			process.setArgs("-o",tmpFile.getAbsolutePath(),//.replace('\\', '/'),
@@ -95,16 +95,16 @@ public class ExportDialog extends JDialog {
 		}
 		
 		if( stlFile != null && tmpFile !=null) {
-			String stl = Editor.readFile(tmpFile);
-			if( stl == null || stl.isEmpty()) {
-				editor.logError(new RuntimeException("STL is empty"), " ");
+			byte [] data = Editor.readFile(tmpFile);
+			if( data.length == 0) {
+				editor.logError(new RuntimeException("Export is empty"), " ");
 				return;
 			}
 			
 			OutputStream out = null;
 			try {
 				out = new FileOutputStream(stlFile);
-				out.write(stl.getBytes());
+				out.write(data);
 			} finally {
 				try {
 					out.close();
@@ -128,7 +128,7 @@ public class ExportDialog extends JDialog {
 			try {
 				saveExport();
 			} catch (IOException e) {
-				editor.logError(e, "Exporting STL");
+				editor.logError(e, "Exporting File");
 			}
 		}
 		

@@ -17,14 +17,15 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
@@ -187,13 +188,6 @@ public class Editor extends JFrame {
 			}
 		});
 
-		JMenuItem mntmExportStl = new JMenuItem("Export STL");
-		mntmExportStl.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				actionExportStl();
-			}
-		});
-		mnFile.add(mntmExportStl);
 		mnFile.add(mntmReload);
 
 
@@ -216,6 +210,49 @@ public class Editor extends JFrame {
 		});
 
 		mnFile.add(mntmExit);
+
+		JMenu exFile = new JMenu("Export");
+		menuBar.add(exFile);
+
+		JMenuItem export = new JMenuItem("Export as STL");
+		export.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionExport(".stl");
+			}
+		});
+		exFile.add(export);
+
+		export = new JMenuItem("Export as OFF");
+		export.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionExport(".off");
+			}
+		});
+		exFile.add(export);
+
+		export = new JMenuItem("Export as DXF");
+		export.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionExport(".dxf");
+			}
+		});
+		exFile.add(export);
+
+		export = new JMenuItem("Export as CSG");
+		export.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionExport(".csg");
+			}
+		});
+		exFile.add(export);
+
+		export = new JMenuItem("Export as PNG");
+		export.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionExport(".png");
+			}
+		});
+		exFile.add(export);
 
 		JPanel panel = new JPanel();
 		FlowLayout flowLayout_1 = (FlowLayout) panel.getLayout();
@@ -269,7 +306,7 @@ public class Editor extends JFrame {
 
 		btnExportStl.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				actionExportStl();
+				actionExport(".stl");
 			}
 		});
 		panel.add(btnExportStl);
@@ -512,12 +549,14 @@ public class Editor extends JFrame {
 	}
 
 	private File lastExport;
-	protected void actionExportStl() {
+	protected void actionExport(String type) {
 		ExportDialog dialog = new ExportDialog();
+		//stl / .off / .dxf, .csg).
+
 		//  make sure the process is running and the file is current
 		actionPreview();
 		try {
-			dialog.start(previewProcess.getPreviewFile());
+			dialog.start(previewProcess.getPreviewFile(),type);
 		} catch (IOException e) {
 			logError(e, "Can't export");
 			return;
@@ -526,20 +565,36 @@ public class Editor extends JFrame {
 		JFileChooser fc = new JFileChooser();
 		fc.setFileHidingEnabled(true);
 		if( lastExport != null ) {
-			fc.setSelectedFile(lastExport);
+			if( lastExport.getName().endsWith(type)) {
+				fc.setSelectedFile(lastExport);
+			} else {
+				String name = "new"+type;
+				if( file != null ) {
+					name = file.getName();
+					if( name.endsWith(".scad")) {
+						name = name.substring(0,name.length()-5)+type;
+					}
+				}
+				fc.setCurrentDirectory(new File(lastExport.getParentFile(),name));
+			}
 		} else if( lastDir != null ) {
-			String name = "new.stl";
+			String name = "new"+type;
 			if( file != null ) {
 				name = file.getName();
 				if( name.endsWith(".scad")) {
-					name = name.substring(0,name.length()-5)+".stl";
+					name = name.substring(0,name.length()-5)+type;
 				}
 			}
 			fc.setSelectedFile(new File(lastDir,name));
 		}
 
 		if( fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-			lastExport = fc.getSelectedFile();
+			File tmp = fc.getSelectedFile();
+			if( !tmp.getName().toLowerCase().endsWith(type)) {
+				JOptionPane.showMessageDialog(this, "File name MUST end with "+type, "Type missmatch", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			lastExport = tmp;
 			dialog.save(lastExport,this);
 		} else {
 			dialog.cancel();
@@ -961,21 +1016,25 @@ public class Editor extends JFrame {
 		}
 	}
 
-	public static String readFile(File file) throws IOException {
-		StringBuilder ret = new StringBuilder();
-		Scanner in = new Scanner(file);
-		try {
-			while(in.hasNextLine()) {
-				ret.append(in.nextLine()+"\n");
-			}
-
-		}finally{
+	public static byte[] readFile(File file) throws IOException {
+		int sz = (int)file.length();
+		byte data [] = new byte[sz];
+		if( sz > 0 ) {
+			
+			DataInputStream in = new DataInputStream(new FileInputStream(file));
+			
 			try {
-				in.close();
-			} catch (Exception e) {
+				in.readFully(data);
+				
+			}finally{
+				try {
+					in.close();
+				} catch (Exception e) {
+				}
 			}
 		}
-		return ret.toString();
+
+		return data;
 	}
 
 	private void write(File tmp) {
@@ -1056,7 +1115,7 @@ public class Editor extends JFrame {
 
 	private void load(File tmpFile) {
 		try {
-			originalText = readFile(tmpFile);
+			originalText = new String(readFile(tmpFile));
 			editorPane.setText(originalText);
 			editorPane.setCaretPosition(1);
 			file = tmpFile;
@@ -1092,6 +1151,11 @@ public class Editor extends JFrame {
 
 		if( fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
 			File tmp = fc.getSelectedFile();
+			if( tmp.exists()) {
+				if( JOptionPane.showConfirmDialog(this, tmp.getName()+" already exists.  Do you want to over write it?") != JOptionPane.OK_OPTION) {
+					return;
+				}
+			}
 			write(tmp);
 			file = tmp;
 			recentFiles.remove(file.getAbsolutePath());

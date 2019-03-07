@@ -123,7 +123,7 @@ public class VariableManager {
 
 	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws IOException {
-		String code = Editor.readFile(new File("T:\\Applications\\OpenSCAD\\workspace\\SmalleDriverPegV2.scad"));
+		String code = new String(Editor.readFile(new File("T:\\Applications\\OpenSCAD\\workspace\\SmalleDriverPegV2.scad")));
 
 		DataInputStream in = new DataInputStream(System.in);
 		String line = in.readLine();
@@ -197,7 +197,7 @@ public class VariableManager {
 
 	@SuppressWarnings("deprecation")
 	public static void main3(String[] args) throws IOException {
-		String code = Editor.readFile(new File("T:\\Applications\\OpenSCAD\\workspace\\SmalleDriverPegV2.scad"));
+		String code = new String(Editor.readFile(new File("T:\\Applications\\OpenSCAD\\workspace\\SmalleDriverPegV2.scad")));
 		List<Scope> scopes = getScopes(code);
 		Collections.sort(scopes, new Comparator<Scope>() {
 

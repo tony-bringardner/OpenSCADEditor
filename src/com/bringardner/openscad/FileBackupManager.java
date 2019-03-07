@@ -10,7 +10,8 @@ public class FileBackupManager {
 	
 
 	private void ensureCapacity(File file) {
-		if( file.exists()) {
+		int maxBackups =  Configuration.getInstance().getMaxBackup();
+		if(maxBackups > 0 && file.exists()) {
 			String backupDir = Configuration.getInstance().getBackupFolder();
 			File dir = file.getParentFile();
 			if( backupDir != null) {
@@ -23,7 +24,7 @@ public class FileBackupManager {
 				dir.mkdirs();
 			}
 			int next = 0;
-			int maxBackups =  Configuration.getInstance().getMaxBackup();
+			
 			
 			for(int idx=1; idx <= maxBackups; idx++) {
 				File tmp = new File(dir,getFileName(file.getName(),idx));

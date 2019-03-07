@@ -130,7 +130,7 @@ public class PreferencesFrame extends JFrame {
 		panel_1.add(lblMaxBackupFiles);
 		
 		maxBackupSpinner = new JSpinner();
-		maxBackupSpinner.setModel(new SpinnerNumberModel(new Integer(config.getMaxBackup()), null, null, new Integer(1)));
+		maxBackupSpinner.setModel(new SpinnerNumberModel(new Integer(4), new Integer(0), null, new Integer(1)));
 		maxBackupSpinner.setBounds(147, 81, 48, 20);
 		panel_1.add(maxBackupSpinner);
 		
