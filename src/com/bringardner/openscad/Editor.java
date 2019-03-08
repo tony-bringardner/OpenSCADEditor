@@ -594,6 +594,11 @@ public class Editor extends JFrame {
 				JOptionPane.showMessageDialog(this, "File name MUST end with "+type, "Type missmatch", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
+			if( tmp.exists()) {
+				if( JOptionPane.showConfirmDialog(this, tmp.getName()+" already exists.  Do you want to over write it?") != JOptionPane.OK_OPTION) {
+					return;
+				}
+			}
 			lastExport = tmp;
 			dialog.save(lastExport,this);
 		} else {
