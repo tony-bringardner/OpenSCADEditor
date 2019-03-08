@@ -784,15 +784,19 @@ public class Editor extends JFrame {
 
 	protected void actionPreview() {
 		final String code = editorPane.getText();
+		if( previewProcess == null ) {
+			synchronized (previewMutex) {
+				if( previewProcess == null ) {
+					previewProcess = new ProcessManager();
+					previewProcess.start();
+				}
+			}
+		}
 		new Thread(new Runnable() {
 
 			@Override
 			public void run() {
 				synchronized (previewMutex) {
-					if( previewProcess == null ) {
-						previewProcess = new ProcessManager();
-						previewProcess.start();
-					}
 					String myCode = code;
 					try {
 						if( included != null ) {
