@@ -41,6 +41,7 @@ public class ExecFileDialog extends JDialog {
 	 * Create the dialog.
 	 */
 	public ExecFileDialog() {
+		setIconImage(Editor.getOpenScadIcon());
 		setBounds(100, 100, 538, 258);
 		getContentPane().setLayout(new BorderLayout());
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));

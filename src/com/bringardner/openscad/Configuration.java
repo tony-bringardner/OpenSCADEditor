@@ -22,6 +22,8 @@ public class Configuration {
 	private String backupFolder;
 	private String execPath;
 	private List<Template> templates;
+	private boolean pacmanEnabled=false;
+	
 	/**
 	 * templates2 is given to other objects so templates can not be modified
 	 */
@@ -131,6 +133,14 @@ public class Configuration {
 	}
 
 
+
+	public boolean isPacmanEnabled() {
+		return pacmanEnabled;
+	}
+
+	public void setPacmanEnabled(boolean pacmanEnabled) {
+		this.pacmanEnabled = pacmanEnabled;
+	}
 
 	public List<Template> getTemplates() {
 		if( templates2 == null && templates != null ) {

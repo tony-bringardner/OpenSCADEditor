@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.EventQueue;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -14,6 +15,7 @@ import java.io.InputStreamReader;
 
 import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -23,11 +25,11 @@ import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
-import java.awt.Font;
 
 public class PreferencesFrame extends JFrame {
 
@@ -43,6 +45,7 @@ public class PreferencesFrame extends JFrame {
 	private JTextField execTextField;
 	private JTextArea textArea;
 	private Editor editor;
+	private JCheckBox chckbxEnablePacmanEport;
 
 	/**
 	 * Launch the application.
@@ -64,10 +67,11 @@ public class PreferencesFrame extends JFrame {
 	 * Create the frame.
 	 */
 	public PreferencesFrame(Editor editor) {
+		setIconImage(Editor.getOpenScadIcon());
 		this.editor = editor;
 		Configuration config = Configuration.getInstance();
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		setBounds(100, 100, 776, 438);
+		setBounds(100, 100, 760, 537);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		contentPane.setLayout(new BorderLayout(0, 0));
@@ -126,7 +130,7 @@ public class PreferencesFrame extends JFrame {
 		panel_1.add(maxRecentSpinner);
 		
 		JLabel lblMaxBackupFiles = new JLabel("Max Backup files");
-		lblMaxBackupFiles.setBounds(29, 84, 118, 14);
+		lblMaxBackupFiles.setBounds(23, 84, 118, 14);
 		panel_1.add(lblMaxBackupFiles);
 		
 		maxBackupSpinner = new JSpinner();
@@ -138,7 +142,7 @@ public class PreferencesFrame extends JFrame {
 		panel_2.setBorder(new TitledBorder(null, "Open SCAD Executable", TitledBorder.LEADING, TitledBorder.TOP, null, null));
 		FlowLayout fl_panel_2 = (FlowLayout) panel_2.getLayout();
 		fl_panel_2.setAlignment(FlowLayout.LEFT);
-		panel_2.setBounds(23, 130, 660, 49);
+		panel_2.setBounds(23, 170, 660, 49);
 		panel_1.add(panel_2);
 		
 		execTextField = new JTextField();
@@ -188,7 +192,7 @@ public class PreferencesFrame extends JFrame {
 		panel_1.add(minVariableNameLengthSpinner);
 		
 		JPanel panel_4 = new JPanel();
-		panel_4.setBounds(23, 207, 660, 123);
+		panel_4.setBounds(23, 230, 660, 123);
 		panel_1.add(panel_4);
 		panel_4.setLayout(new BorderLayout(0, 0));
 		
@@ -196,6 +200,7 @@ public class PreferencesFrame extends JFrame {
 		panel_4.add(scrollPane);
 		
 		textArea = new JTextArea();
+		textArea.setLocation(23, 0);
 		scrollPane.setViewportView(textArea);
 		
 		JButton btnNewButton = new JButton("Auto Complete Templates");
@@ -206,6 +211,13 @@ public class PreferencesFrame extends JFrame {
 		});
 		btnNewButton.setBounds(483, 27, 200, 23);
 		panel_1.add(btnNewButton);
+		
+		chckbxEnablePacmanEport = new JCheckBox("Enable Pacman Eport Dialog");
+		chckbxEnablePacmanEport.setHorizontalTextPosition(SwingConstants.LEFT);
+		chckbxEnablePacmanEport.setBounds(23, 126, 216, 23);
+		chckbxEnablePacmanEport.setSelected(config.isPacmanEnabled());
+		
+		panel_1.add(chckbxEnablePacmanEport);
 		String path = execTextField.getText();
 		if( path != null && !path.trim().isEmpty()) {
 			actionValidate();
@@ -254,7 +266,7 @@ public class PreferencesFrame extends JFrame {
 		maxRecentSpinner.setValue(config.getMaxRecent());
 		minVariableNameLengthSpinner.setValue(config.getMinVariableNameLength());
 		execTextField.setText(config.getExecPath());
-	
+		chckbxEnablePacmanEport.setSelected(config.isPacmanEnabled());
 	}
 
 	protected void actinRestoreDefaults() {
@@ -263,7 +275,7 @@ public class PreferencesFrame extends JFrame {
 		backupFolderTextField.setText(config.getBackupFolder());
 		maxRecentSpinner.setValue(config.getMaxRecent());
 		minVariableNameLengthSpinner.setValue(config.getMinVariableNameLength());
-		//execTextField.setText(ProcessManager.getExePath());
+		chckbxEnablePacmanEport.setSelected(config.isPacmanEnabled());
 		
 	}
 
@@ -313,6 +325,7 @@ public class PreferencesFrame extends JFrame {
 		config.setMaxBackup((Integer) maxBackupSpinner.getValue());
 		config.setMinVariableNameLength((Integer)minVariableNameLengthSpinner.getValue());
 		config.setMaxRecent((Integer)maxRecentSpinner.getValue());
+		config.setPacmanEnabled(chckbxEnablePacmanEport.isSelected());
 		try {
 			config.save();
 		} catch (IOException e) {

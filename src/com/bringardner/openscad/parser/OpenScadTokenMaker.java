@@ -945,7 +945,8 @@ public class OpenScadTokenMaker extends AbstractJFlexCTokenMaker {
   private int zzMarkedPos;
 
   /** the textposition at the last state to be included in yytext */
-  private int zzPushbackPos;
+  @SuppressWarnings("unused")
+private int zzPushbackPos;
 
   /** the current text position in the buffer */
   private int zzCurrentPos;
@@ -958,21 +959,25 @@ public class OpenScadTokenMaker extends AbstractJFlexCTokenMaker {
   private int zzEndRead;
 
   /** number of newlines encountered up to the start of the matched text */
-  private int yyline;
+  @SuppressWarnings("unused")
+private int yyline;
 
   /** the number of characters up to the start of the matched text */
-  private int yychar;
+  @SuppressWarnings("unused")
+private int yychar;
 
   /**
    * the number of characters from the last newline up to the start of the 
    * matched text
    */
-  private int yycolumn;
+  @SuppressWarnings("unused")
+private int yycolumn;
 
   /** 
    * zzAtBOL == true <=> the scanner is currently at the beginning of a line
    */
-  private boolean zzAtBOL = true;
+  @SuppressWarnings("unused")
+private boolean zzAtBOL = true;
 
   /** zzAtEOF == true <=> the scanner is at the EOF */
   private boolean zzAtEOF;
@@ -1454,7 +1459,8 @@ public class OpenScadTokenMaker extends AbstractJFlexCTokenMaker {
    * 
    * @exception   java.io.IOException  if any I/O-Error occurs
    */
-  private boolean zzRefillOld() throws java.io.IOException {
+  @SuppressWarnings("unused")
+private boolean zzRefillOld() throws java.io.IOException {
 
     /* first: make room (if you can) */
     if (zzStartRead > 0) {

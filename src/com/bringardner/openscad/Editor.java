@@ -6,7 +6,6 @@ import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
@@ -17,6 +16,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -83,7 +83,23 @@ public class Editor extends JFrame {
 	private List<String> variables = new ArrayList<>();
 	private FileBackupManager backupManager = new FileBackupManager();
 	private RTextScrollPane scrollPane;
-
+	private static BufferedImage iconImage;
+	private static Object imageMutex = new Object();
+	public static BufferedImage getOpenScadIcon() {
+		if( iconImage == null ) {
+			synchronized (imageMutex) {
+				if( iconImage == null ) {
+					try {
+						URL imgUrl = Editor.class.getResource("/openscad2.png");
+						iconImage = ImageIO.read(imgUrl);
+					} catch (IOException e2) {
+						e2.printStackTrace();
+					}
+				}
+			}
+		}
+		return iconImage;
+	}
 
 
 	/**
@@ -126,15 +142,7 @@ public class Editor extends JFrame {
 	 */
 	public Editor() {
 
-		try {
-			URL imgUrl = Editor.class.getResource("/openscad2.png");
-
-			Image img = ImageIO.read(imgUrl);
-			setIconImage(img);
-		} catch (IOException e2) {
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
+		setIconImage(getOpenScadIcon());
 
 
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -322,7 +330,7 @@ public class Editor extends JFrame {
 			}
 		});
 		btnHelp.setPreferredSize(new Dimension(32, 32));
-		btnHelp.setIcon(new ImageIcon(Editor.class.getResource("/Help.png")));
+		btnHelp.setIcon(new ImageIcon(Editor.class.getResource("/HelpBlack.png")));
 		btnHelp.setToolTipText("Help");
 		btnPreview.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {

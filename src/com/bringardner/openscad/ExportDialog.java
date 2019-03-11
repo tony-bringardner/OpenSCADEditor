@@ -29,7 +29,8 @@ public class ExportDialog extends JDialog {
 	private File tmpFile;
 	private ProcessManager process;
 	private Editor editor;
-
+	private PacmanDialog pacman;
+	
 	/**
 	 * Launch the application.
 	 */
@@ -74,6 +75,14 @@ public class ExportDialog extends JDialog {
 
 	}
 
+	@Override
+	public void dispose() {
+		super.dispose();
+		if( pacman != null ) {
+			pacman.dispose();
+		}
+	}
+	
 	public void start(File previewFile,String type) throws IOException  {
 			this.tmpFile = File.createTempFile("Editor", type);
 			process = new ProcessManager();
@@ -120,9 +129,16 @@ public class ExportDialog extends JDialog {
 		this.stlFile = stlFile;
 		if( process.isAlive()) {
 			startThread();
-			setModal(true);
-			setLocationRelativeTo(editor);
-			setVisible(true);
+			if(Configuration.getInstance().isPacmanEnabled()) {
+				pacman = new PacmanDialog(editor, ()->cancel());
+				pacman.setModal(true);
+				pacman.setVisible(true);
+			} else {
+				setModal(true);
+				setLocationRelativeTo(editor);
+				setVisible(true);
+			}
+			
 		}  else {
 			
 			try {

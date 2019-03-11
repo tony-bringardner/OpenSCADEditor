@@ -38,6 +38,7 @@ public class TemplateNewDialog extends JDialog {
 	 * Create the dialog.
 	 */
 	public TemplateNewDialog() {
+		setIconImage(Editor.getOpenScadIcon());
 		setLocationRelativeTo(null);
 		setBounds(100, 100, 831, 341);
 		getContentPane().setLayout(new BorderLayout());

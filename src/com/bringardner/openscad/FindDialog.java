@@ -79,6 +79,7 @@ public class FindDialog extends JDialog {
 	 * Create the dialog.
 	 */
 	public FindDialog() {
+		setIconImage(Editor.getOpenScadIcon());
 		setBounds(100, 100, 331, 442);
 		getContentPane().setLayout(new BorderLayout());
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
