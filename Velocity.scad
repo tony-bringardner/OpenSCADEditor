@@ -1,4 +1,4 @@
-//  Velocoty macro to create a rainbow sin wave
+//  Velocity macro to create a rainbow sin wave
 #macro(rainbow $colors) 
 #set($row=0)
 
