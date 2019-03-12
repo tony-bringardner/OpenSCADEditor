@@ -20,6 +20,7 @@ OpenSCADEditor is a java based editor designed to improve productivity for users
 	<li>Search and Replace
 	<li>Undo and Redo
 	<li>Links with OpenSCAD for easy preview and exporting 3d models.
+	<li>Support for <a href="http://velocity.apache.org/engine/1.7/user-guide.html">Apache Velocity </a>
 </ul>
 
 Much of the functionality provided here is due to the <em>AWESOME</em> <a href="https://github.com/bobbylight/RSyntaxTextArea">RSyntaxTextArea</a> library.
@@ -144,5 +145,15 @@ Much of the functionality provided here is due to the <em>AWESOME</em> <a href="
 </tr>
 
 </tbody></table>
+<br>
+<h2>Using Velocoty</h2>
+Velocity is a template engine. It is a simple yet powerful template language that let's you create reusable code snippets.
+The velocity code is evaluated and expanded before sending to OpenSCAD for preview or exporting.
+OpenscadEditorV1.1.jar was created with velocity support.
+
+</h1>
+
+
+
 <br></body>
 </html>

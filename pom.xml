@@ -19,7 +19,12 @@
   </build>
   <dependencies>
  
-   
+   	<dependency>
+		<groupId>velocity</groupId>
+		<artifactId>velocity</artifactId>
+		<version>1.5</version>
+	</dependency>
+  
   	<!-- https://mvnrepository.com/artifact/com.fifesoft/autocomplete -->
 	<dependency>
     	<groupId>com.fifesoft</groupId>

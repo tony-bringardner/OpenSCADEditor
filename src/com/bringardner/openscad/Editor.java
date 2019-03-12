@@ -21,6 +21,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +47,10 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.Velocity;
+import org.apache.velocity.app.VelocityEngine;
+import org.apache.velocity.runtime.RuntimeConstants;
 import org.fife.ui.autocomplete.AutoCompletion;
 import org.fife.ui.autocomplete.DefaultCompletionProvider;
 import org.fife.ui.autocomplete.ShorthandCompletion;
@@ -559,8 +564,7 @@ public class Editor extends JFrame {
 	private File lastExport;
 	protected void actionExport(String type) {
 		ExportDialog dialog = new ExportDialog();
-		//stl / .off / .dxf, .csg).
-
+		
 		//  make sure the process is running and the file is current
 		actionPreview();
 		try {
@@ -820,8 +824,9 @@ public class Editor extends JFrame {
 								}
 							}
 						}
+						myCode = executeVelocity(myCode);
 						previewProcess.updatePreviewFile(myCode);
-					} catch (IOException e) {
+					} catch (Throwable e) {
 						logError(e, "Update preview file");
 					}
 				}
@@ -1037,12 +1042,12 @@ public class Editor extends JFrame {
 		int sz = (int)file.length();
 		byte data [] = new byte[sz];
 		if( sz > 0 ) {
-			
+
 			DataInputStream in = new DataInputStream(new FileInputStream(file));
-			
+
 			try {
 				in.readFully(data);
-				
+
 			}finally{
 				try {
 					in.close();
@@ -1180,6 +1185,23 @@ public class Editor extends JFrame {
 			buildMenu();
 		}
 
+	}
+
+	private String executeVelocity(String templateStr) throws Exception  {
+		StringWriter swOut = new StringWriter();
+		Velocity.setProperty("velocimacro.permissions.allow.inline.to.replace.global", "true");
+		VelocityEngine ve = new VelocityEngine();
+		ve.setProperty(RuntimeConstants.RUNTIME_LOG_LOGSYSTEM_CLASS, "org.apache.velocity.runtime.log.NullLogChute" );
+
+		ve.init();
+		VelocityContext context = new VelocityContext();
+
+		/**
+		 * Merge data and template
+		 */
+		ve.evaluate( context, swOut, "OpenSCAD Editor", templateStr);
+
+		return swOut.toString();
 	}
 
 }
