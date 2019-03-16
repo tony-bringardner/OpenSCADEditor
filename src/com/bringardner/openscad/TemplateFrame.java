@@ -66,7 +66,7 @@ public class TemplateFrame extends JFrame {
 	 * Create the frame.
 	 */
 	public TemplateFrame() {
-		setIconImage(Editor.getOpenScadIcon());
+		setIconImage(Editor.getOpenScadImage());
 		setTemplates(Configuration.getInstance().getTemplates());
 	
 		addWindowListener(new WindowAdapter() {

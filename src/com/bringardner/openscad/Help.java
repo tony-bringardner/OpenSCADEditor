@@ -40,7 +40,7 @@ public class Help extends JDialog {
 	 * @throws IOException 
 	 */
 	public Help() throws IOException {
-		setIconImage(Editor.getOpenScadIcon());
+		setIconImage(Editor.getOpenScadImage());
 		setBounds(100, 100, 769, 618);
 		getContentPane().setLayout(new BorderLayout());
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));

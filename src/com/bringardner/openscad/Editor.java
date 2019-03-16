@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
@@ -60,7 +61,7 @@ import org.fife.ui.rtextarea.RTextScrollPane;
 public class Editor extends JFrame {
 
 	private static final long serialVersionUID = 1L;
-	private static List<Editor> active = new ArrayList<>();
+
 	protected static final Preferences prefs = Preferences.userNodeForPackage(Editor.class);
 	private static final String KEY_SCREEN_LOCATION = "Location";
 	private static final String KEY_RECENT = "recent";
@@ -74,6 +75,7 @@ public class Editor extends JFrame {
 	private Object previewMutex = new Object();
 	private static List<String> recentFiles = new ArrayList<>();
 
+	private Rectangle lastSize;
 	private JPanel contentPane;
 	private String originalText = "";
 	private File file;
@@ -88,22 +90,76 @@ public class Editor extends JFrame {
 	private List<String> variables = new ArrayList<>();
 	private FileBackupManager backupManager = new FileBackupManager();
 	private RTextScrollPane scrollPane;
-	private static BufferedImage iconImage;
+	private static BufferedImage image;
 	private static Object imageMutex = new Object();
-	public static BufferedImage getOpenScadIcon() {
-		if( iconImage == null ) {
+
+	private static  List<Editor> procs = new ArrayList<>();
+
+	private static ImageIcon icon;
+
+	private synchronized static void register(Editor p) {
+		procs.add(p);
+	}
+
+	private synchronized static void close(Editor p) {
+		if( p.hasChanged()) {
+			if( p.showConfirmDialog() != JOptionPane.OK_OPTION) {
+				return;
+			}
+		}
+
+		if( procs.size() == 1) {
+			Object[] options = { "Exit Application", "No, Don't exit" };
+			
+			int ret = JOptionPane.showOptionDialog(p, "Closing this window will cause the application to exit.\nClose anyway?", "Warning",
+					JOptionPane.OK_CANCEL_OPTION, 
+					JOptionPane.QUESTION_MESSAGE, 
+					getOpenScadIcon(), // do not use a custom Icon
+					options, // the titles of buttons
+					options[0]); // default button title
+
+			if( ret != JOptionPane.OK_OPTION) {
+				return;
+			}
+		}
+
+		if( p.previewProcess != null ) {
+			p.previewProcess.stop();
+			p.previewProcess = null;
+		}
+
+		procs.remove(p);
+		p.dispose();
+
+		if( procs.size() == 0 ) {
+			System.exit(0);
+		}
+
+	}
+
+	public static BufferedImage getOpenScadImage() {
+		if( image == null ) {
 			synchronized (imageMutex) {
-				if( iconImage == null ) {
+				if( image == null ) {
 					try {
-						URL imgUrl = Editor.class.getResource("/openscad2.png");
-						iconImage = ImageIO.read(imgUrl);
+						URL imgUrl = Editor.class.getResource("/openscad3.png");
+						image = ImageIO.read(imgUrl);
+						double ratio = (double)image.getHeight()/(double)image.getWidth();
+						icon = new ImageIcon(image.getScaledInstance(50, (int)(50*ratio), Image.SCALE_SMOOTH));
 					} catch (IOException e2) {
 						e2.printStackTrace();
 					}
 				}
 			}
 		}
-		return iconImage;
+		return image;
+	}
+
+	public static ImageIcon getOpenScadIcon() {
+		if( icon == null ) {
+			getOpenScadImage();
+		}
+		return icon;
 	}
 
 
@@ -112,28 +168,39 @@ public class Editor extends JFrame {
 	 */
 	public static void main(String[] args) {
 
-		String tmp = prefs.get(KEY_RECENT, "");
-		if( !tmp.isEmpty()) {
-			tmp = tmp.substring(1);
-			tmp = tmp.substring(0,tmp.length()-1);
-			for (String str : tmp.split("[,]")) {
-				recentFiles.add(str.trim());
-			}
-		}
 
-		Editor frame = new Editor();		
-		tmp = prefs.get(KEY_SCREEN_LOCATION, "");
-		if( !tmp.isEmpty()) {
-			String parts[] = tmp.split("[,]");
-			if( parts.length == 4 ) {
-				frame.setBounds(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+
+		Editor frame = new Editor();
+		if( procs.size() > 0 ) {
+
+			Editor last = procs.get(procs.size()-1);
+			Rectangle b = last.getBounds();
+			b.x+=50;
+			b.y+=50;
+			frame.lastSize = b;
+			frame.setBounds(b);			
+		} else {
+			String tmp = prefs.get(KEY_RECENT, "");
+			if( !tmp.isEmpty()) {
+				tmp = tmp.substring(1);
+				tmp = tmp.substring(0,tmp.length()-1);
+				for (String str : tmp.split("[,]")) {
+					recentFiles.add(str.trim());
+				}
+			}
+			tmp = prefs.get(KEY_SCREEN_LOCATION, "");
+			if( !tmp.isEmpty()) {
+				String parts[] = tmp.split("[,]");
+				if( parts.length == 4 ) {
+					frame.setBounds(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+				}
 			}
 		}
+		register(frame);
 
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-
 					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -147,7 +214,7 @@ public class Editor extends JFrame {
 	 */
 	public Editor() {
 
-		setIconImage(getOpenScadIcon());
+		setIconImage(getOpenScadImage());
 
 
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -167,13 +234,22 @@ public class Editor extends JFrame {
 		});
 		mnFile.add(mntmOpen);
 
-		JMenuItem mntmNew = new JMenuItem("New");
+		JMenuItem mntmNew = new JMenuItem("New Script");
 		mntmNew.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionNew();
 			}
 		});
 		mnFile.add(mntmNew);
+
+		JMenuItem mntmNewWindow = new JMenuItem("New Window");
+		mntmNewWindow.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionNewWindow();
+			}
+		});
+		mnFile.add(mntmNewWindow);
+
 		recentMenu = new JMenu("Recent...");
 		mnFile.add(recentMenu);
 		buildMenu();
@@ -467,14 +543,17 @@ public class Editor extends JFrame {
 			}
 
 			private void updatePrefs(ComponentEvent ev) {
-				String val = ev.paramString();
-				val = val.substring(val.indexOf('(')).replace("(", "").replace(")", "").replace(" ", ",").replace("x", ",");
-				//System.out.println("resize ev="+val);
-				prefs.put(KEY_SCREEN_LOCATION, val);
-				try {
-					prefs.flush();
-				} catch (BackingStoreException e) {
-					logError(e, "save location");
+				Rectangle b = getBounds();
+				if(lastSize == null || !lastSize.equals(b)) {
+					lastSize = b;
+					String val = String.format("%d,%d,%d,%d", b.x,b.y,b.width,b.height);
+					//System.out.println("resize ev="+val);
+					prefs.put(KEY_SCREEN_LOCATION, val);
+					try {
+						prefs.flush();
+					} catch (BackingStoreException e) {
+						logError(e, "save location");
+					}
 				}
 			}
 
@@ -486,31 +565,11 @@ public class Editor extends JFrame {
 
 		addWindowListener(new WindowAdapter() {
 			@Override
-			public void windowOpened(WindowEvent e) {
-				active.add(Editor.this);
-				super.windowOpened(e);
-			}
-
-			@Override
 			public void windowClosing(WindowEvent e) {
-				if( hasChanged()) {
-					if( showConfirmDialog() != JOptionPane.OK_OPTION) {
-						return;
-					}
-				}
-
-				if( previewProcess != null ) {
-					previewProcess.stop();
-					previewProcess = null;
-				}
-				dispose();
-				active.remove(Editor.this);
-				if( active.size() == 0 ) {
-					System.exit(0);
-				}
+				close(Editor.this);
 			}
-
 		});
+
 		new Thread(new Runnable() {
 
 			@Override
@@ -561,10 +620,15 @@ public class Editor extends JFrame {
 
 	}
 
+	protected void actionNewWindow() {
+		main(new String[0]);
+
+	}
+
 	private File lastExport;
 	protected void actionExport(String type) {
 		ExportDialog dialog = new ExportDialog();
-		
+
 		//  make sure the process is running and the file is current
 		actionPreview();
 		try {
@@ -1128,7 +1192,7 @@ public class Editor extends JFrame {
 		int ret = JOptionPane.showOptionDialog(this, " There are unsaved changes.\nDo you want to discard them?", "Warning",
 				JOptionPane.OK_CANCEL_OPTION, 
 				JOptionPane.QUESTION_MESSAGE, 
-				null, // do not use a custom Icon
+				getOpenScadIcon(), // do not use a custom Icon
 				options, // the titles of buttons
 				options[0]); // default button title
 

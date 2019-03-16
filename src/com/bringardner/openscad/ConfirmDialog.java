@@ -34,7 +34,7 @@ public class ConfirmDialog extends JDialog {
 	 * Create the dialog.
 	 */
 	public ConfirmDialog() {
-		setIconImage(Editor.getOpenScadIcon());
+		setIconImage(Editor.getOpenScadImage());
 		setBounds(100, 100, 450, 300);
 		getContentPane().setLayout(new BorderLayout());
 		contentPanel.setLayout(new FlowLayout());

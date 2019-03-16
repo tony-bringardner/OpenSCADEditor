@@ -67,7 +67,7 @@ public class PreferencesFrame extends JFrame {
 	 * Create the frame.
 	 */
 	public PreferencesFrame(Editor editor) {
-		setIconImage(Editor.getOpenScadIcon());
+		setIconImage(Editor.getOpenScadImage());
 		this.editor = editor;
 		Configuration config = Configuration.getInstance();
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
