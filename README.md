@@ -21,6 +21,7 @@ OpenSCADEditor is a java based editor designed to improve productivity for users
 	<li>Undo and Redo
 	<li>Links with OpenSCAD for easy preview and exporting 3d models.
 	<li>Support for <a href="http://velocity.apache.org/engine/1.7/user-guide.html">Apache Velocity </a>
+	<li>2D Polygon design assistance
 </ul>
 
 Much of the functionality provided here is due to the <em>AWESOME</em> <a href="https://github.com/bobbylight/RSyntaxTextArea">RSyntaxTextArea</a> library.
