@@ -27,7 +27,7 @@ public class Help extends JDialog {
 	 */
 	public static void main(String[] args) {
 		try {
-			Help dialog = new Help();
+			Help dialog = new Help("/Help.html");
 			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			dialog.setVisible(true);
 		} catch (Exception e) {
@@ -39,7 +39,7 @@ public class Help extends JDialog {
 	 * Create the dialog.
 	 * @throws IOException 
 	 */
-	public Help() throws IOException {
+	public Help(String helpFileName) throws IOException {
 		setIconImage(Editor.getOpenScadImage());
 		setBounds(100, 100, 769, 618);
 		getContentPane().setLayout(new BorderLayout());
@@ -66,7 +66,7 @@ public class Help extends JDialog {
 				        }
 				    }
 				});
-				InputStream in = getClass().getResourceAsStream("/Help.html");
+				InputStream in = getClass().getResourceAsStream(helpFileName);
 				try {
 					byte data[] = new byte[1024*3];
 					StringBuilder html = new StringBuilder();

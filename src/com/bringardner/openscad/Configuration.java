@@ -168,7 +168,7 @@ public class Configuration {
 
 
 		templates.add(new Template( "linear_extrude", "linear_extrude", "linear_extrude (height = ${height}, center = ${center}, convexity = ${convexity}, twist = ${twist} ) {\n\t${cursor}\n}"));
-		// for(variable = [start : increment : end])
+		templates.add(new Template( "rotate_extrude", "rotate_extrude", "rotate_extrude ( ) {\n\t${cursor}\n}"));
 		templates.add(new Template( "for", "for-loop", 
 				"for(${idx} = [${start} : ${increment} : ${end}]) {\n\t${cursor}\n}"));
 

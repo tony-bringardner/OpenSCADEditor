@@ -57,6 +57,8 @@ import org.fife.ui.autocomplete.DefaultCompletionProvider;
 import org.fife.ui.autocomplete.ShorthandCompletion;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
+import com.bringardner.polygon.PolygonFrame;
+
 
 public class Editor extends JFrame {
 
@@ -286,7 +288,18 @@ public class Editor extends JFrame {
 				actionPreferences();
 			}
 		});
+		
+		JSeparator separator_1 = new JSeparator();
+		mnFile.add(separator_1);
 		mnFile.add(mntmPreferences);
+		
+		JMenuItem mntmOpenPolygonDesign = new JMenuItem("Open Polygon Design Window");
+		mntmOpenPolygonDesign.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionOpenPolygonWindow();
+			}
+		});
+		mnFile.add(mntmOpenPolygonDesign);
 
 		JSeparator separator = new JSeparator();
 		mnFile.add(separator);
@@ -620,6 +633,11 @@ public class Editor extends JFrame {
 
 	}
 
+	protected void actionOpenPolygonWindow() {
+		new PolygonFrame().setVisible(true);
+
+	}
+
 	protected void actionNewWindow() {
 		main(new String[0]);
 
@@ -698,7 +716,7 @@ public class Editor extends JFrame {
 
 	protected void actionHelp() {
 		try {
-			final Help help = new Help();
+			final Help help = new Help("/Help.html");
 			help.setLocationRelativeTo(null);
 			SwingUtilities.invokeLater(()-> help.setVisible(true));
 		} catch (IOException e) {
