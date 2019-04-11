@@ -77,12 +77,12 @@ public class ImageDiff {
 	public static List<Rectangle> findEdges(boolean[][] img,Rectangle rect, int hgap,int vgap) {
 
 
-		System.out.println("r="+rect);
-		System.out.println("w="+img.length+" h="+img[0].length);
+		//System.out.println("r="+rect);
+		//System.out.println("w="+img.length+" h="+img[0].length);
 		
 		List<Rectangle> ret = new ArrayList<Rectangle>();
 		Rectangle m [][] = new Rectangle[img.length][img[0].length];
-		System.out.println("r w="+m.length+" r h="+m[0].length);
+		//System.out.println("r w="+m.length+" r h="+m[0].length);
 		//if( rect.y >= 0 && rect.x >= hgap ) {
 		for(int x=rect.x,maxx = rect.x+rect.width; x<maxx; x++ ) {
 			for(int y=rect.y,maxy=rect.y+rect.height; y<maxy; y++ ) {
