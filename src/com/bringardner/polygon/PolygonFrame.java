@@ -235,13 +235,13 @@ public class PolygonFrame extends JFrame {
 		contentPane.setLayout(new BorderLayout(0, 0));
 		setContentPane(contentPane);
 
-		JPanel contraolPanel = new JPanel();
-		FlowLayout flowLayout = (FlowLayout) contraolPanel.getLayout();
-		flowLayout.setAlignment(FlowLayout.LEFT);
-		contentPane.add(contraolPanel, BorderLayout.NORTH);
+		JPanel controlPanel = new JPanel();
+		FlowLayout fl_controlPanel = (FlowLayout) controlPanel.getLayout();
+		fl_controlPanel.setAlignment(FlowLayout.LEFT);
+		contentPane.add(controlPanel, BorderLayout.NORTH);
 
 		JLabel lblLineWidth = new JLabel("Line Width");
-		contraolPanel.add(lblLineWidth);
+		controlPanel.add(lblLineWidth);
 
 		lineWidthSpinner = new JSpinner();
 		lineWidthSpinner.addChangeListener(new ChangeListener() {
@@ -250,7 +250,7 @@ public class PolygonFrame extends JFrame {
 			}
 		});
 		lineWidthSpinner.setModel(new SpinnerNumberModel(new Integer(4), new Integer(1), null, new Integer(1)));
-		contraolPanel.add(lineWidthSpinner);
+		controlPanel.add(lineWidthSpinner);
 
 		JButton btnClear = new JButton("Clear");
 		btnClear.addActionListener(new ActionListener() {
@@ -258,7 +258,7 @@ public class PolygonFrame extends JFrame {
 				actionClear();
 			}
 		});
-		contraolPanel.add(btnClear);
+		controlPanel.add(btnClear);
 
 
 		JButton btnPolygon = new JButton("Create Polygon Code");
@@ -267,7 +267,7 @@ public class PolygonFrame extends JFrame {
 				actionPolygon();
 			}
 		});
-		contraolPanel.add(btnPolygon);
+		controlPanel.add(btnPolygon);
 
 		JButton loadButton = new JButton("Load Image");
 		loadButton.addActionListener(new ActionListener() {
@@ -275,34 +275,44 @@ public class PolygonFrame extends JFrame {
 				actionLoadImage();
 			}
 		});
-
-		chckbxClosePath = new JCheckBox("Close Path");
-		chckbxClosePath.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				if( drawingPanel != null ) {
-					drawingPanel.updateUI();
-				}
-			}
-		});
-		chckbxClosePath.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				//drawingPanel.updateUI();
-			}
-		});
+		
+		drawingControlPanel = new JPanel();
+		controlPanel.add(drawingControlPanel);
+		
+				chckbxClosePath = new JCheckBox("Close Path");
+				drawingControlPanel.add(chckbxClosePath);
+				chckbxClosePath.addChangeListener(new ChangeListener() {
+					public void stateChanged(ChangeEvent e) {
+						if( drawingPanel != null ) {
+							drawingPanel.updateUI();
+						}
+					}
+				});
+				chckbxClosePath.addActionListener(new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						//drawingPanel.updateUI();
+					}
+				});
 
 		chckbxClosePath.setSelected(true);
-		contraolPanel.add(chckbxClosePath);
+		
+		lblGridSnapTo = new JLabel("Grid Snap to");
+		drawingControlPanel.add(lblGridSnapTo);
+		
+		snapToSpinner = new JSpinner();
+		snapToSpinner.setModel(new SpinnerNumberModel(new Integer(10), new Integer(0), null, new Integer(1)));
+		drawingControlPanel.add(snapToSpinner);
 
-		contraolPanel.add(loadButton);
+		controlPanel.add(loadButton);
 
 		lblHoldTheControl = new JLabel("Hold the control key down to add points.");
-		contraolPanel.add(lblHoldTheControl);
+		controlPanel.add(lblHoldTheControl);
 
 		imageControlPanel = new JPanel();
-		contraolPanel.add(imageControlPanel);
+		controlPanel.add(imageControlPanel);
 
 		JButton btnHelp = new JButton("");
-		contraolPanel.add(btnHelp);
+		controlPanel.add(btnHelp);
 		btnHelp.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionHelp();
@@ -311,7 +321,7 @@ public class PolygonFrame extends JFrame {
 		btnHelp.setPreferredSize(new Dimension(32, 32));
 		btnHelp.setIcon(new ImageIcon(Editor.class.getResource("/HelpBlack.png")));
 		btnHelp.setToolTipText("Help");
-		contraolPanel.add(btnHelp);
+		controlPanel.add(btnHelp);
 
 		JLabel whiteThresholdLabel = new JLabel("Image White Threshold");
 		imageControlPanel.add(whiteThresholdLabel);
@@ -363,15 +373,15 @@ public class PolygonFrame extends JFrame {
 				Graphics2D g1 = (Graphics2D) image.getGraphics();
 				g1.setColor(Color.white);
 				g1.fillRect(0, 0, getWidth(), getHeight());
-				//drawGrid(g1);
-				g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
-
+			
 				g1.setColor(Color.black);
 
 				if( loadedImage != null) {
 					g1.drawImage(loadedImage, 10, 10, loadedImage.getWidth(), loadedImage.getHeight(), null);
 					g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
 				} else {
+					drawGrid(g1);					
+					g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
 					drawImageFromPoints(g1,false);
 					g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
 
@@ -823,6 +833,7 @@ public class PolygonFrame extends JFrame {
 
 	private void setThresholdVisbility() {
 		imageControlPanel.setVisible(loadedImage != null);
+		drawingControlPanel.setVisible(loadedImage == null);
 	}
 
 	protected void drawImageFromPoints(Graphics2D g1,boolean close) {
@@ -1302,6 +1313,9 @@ public class PolygonFrame extends JFrame {
 	private JCheckBox chckbxClosePath;
 	private JPanel debugControlPanel;
 	private JButton btnPrintPoints;
+	private JPanel drawingControlPanel;
+	private JSpinner snapToSpinner;
+	private JLabel lblGridSnapTo;
 
 	public boolean isOn(Point p, boolean bimg[][]) {
 		boolean ret = false;
