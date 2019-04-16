@@ -220,13 +220,13 @@ public class PolygonFrame extends JFrame {
 	private JSpinner whiteThresholdSpinner;
 	private JLabel lblHoldTheControl;
 	protected Point lastMouse;
-
-
+	
 
 	/**
 	 * Create the frame.
 	 */
 	public PolygonFrame() {
+		
 		setIconImage(Editor.getOpenScadImage());
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setBounds(100, 100, 1197, 730);
@@ -300,6 +300,13 @@ public class PolygonFrame extends JFrame {
 		drawingControlPanel.add(lblGridSnapTo);
 		
 		snapToSpinner = new JSpinner();
+		snapToSpinner.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent e) {
+				snapTo = (int) snapToSpinner.getValue();
+				drawingPanel.updateUI();
+			}
+		});
+		
 		snapToSpinner.setModel(new SpinnerNumberModel(new Integer(10), new Integer(0), null, new Integer(1)));
 		drawingControlPanel.add(snapToSpinner);
 
@@ -421,9 +428,6 @@ public class PolygonFrame extends JFrame {
 							}
 						}
 						last = p;
-					}
-					if( debugAdd ) {
-						//System.out.println("Here");
 					}
 					if(segment.type == SegmentType.Curve ) {
 						g.setColor(Color.red);
@@ -564,10 +568,18 @@ public class PolygonFrame extends JFrame {
 		drawingPanel.addMouseMotionListener(new MouseAdapter() {
 			@Override
 			public void mouseMoved(MouseEvent e) {
+				super.mouseMoved(e);
+			}
+		});
+		
+		drawingPanel.addMouseMotionListener(new MouseAdapter() {
+			@Override
+			public void mouseMoved(MouseEvent e) {
 				lastMouse = e.getPoint();
 				if( popupToCurve.isShowing() || popupToLine.isShowing()) {
 					return;
 				}
+				
 				lastMouse = e.getPoint();
 				currentPoint = -1;
 				currentLine = -1;
@@ -598,6 +610,7 @@ public class PolygonFrame extends JFrame {
 			@Override
 			public void mouseDragged(MouseEvent e) {
 				lastMouse = e.getPoint();
+				
 				if(currentSegment != null && !addMode && currentPoint >= 0 && selected) {
 					Point p = e.getPoint();
 
@@ -635,8 +648,8 @@ public class PolygonFrame extends JFrame {
 						}
 
 						Point p = e.getPoint();
-						//p.x +=  snapTo - (p.x % snapTo);
-						//p.y +=  snapTo - (p.y % snapTo);
+						p.x +=  snapTo - (p.x % snapTo);
+						p.y +=  snapTo - (p.y % snapTo);
 						ControlPoint point = new ControlPoint(p);
 
 						if( currentSegment.points.size() < 2) {
@@ -878,7 +891,6 @@ public class PolygonFrame extends JFrame {
 
 	}
 
-	boolean debugAdd = false;
 	protected void actionAddControllPoint() {
 		if( currentSegment != null ) {
 			if( currentSegment.type == SegmentType.Curve) {
@@ -891,7 +903,6 @@ public class PolygonFrame extends JFrame {
 
 					debugPoint = new Point2D.Double(cx, cy);
 					currentSegment.points.add(2, new ControlPoint(debugPoint));
-					debugAdd = true;
 					drawingPanel.updateUI();
 				}
 			}
@@ -955,7 +966,6 @@ public class PolygonFrame extends JFrame {
 					currentSegment = null;
 					currentPoint = -1;
 					currentLine = -1;
-					drawingPanel.updateUI();
 					debugImage = null;
 					debugPanel.updateUI();
 				}
@@ -1030,7 +1040,6 @@ public class PolygonFrame extends JFrame {
 						}
 					}
 					ret[y][x] = pix != WHITE;
-
 				}
 				if( invert ) {
 					ret[y][x] = !ret[y][x];
@@ -1038,7 +1047,6 @@ public class PolygonFrame extends JFrame {
 			}
 
 		}
-
 		return ret;
 	}
 
@@ -1065,16 +1073,21 @@ public class PolygonFrame extends JFrame {
 					Graphics2D g1 = (Graphics2D) image1.getGraphics();
 					g1.setColor(Color.white);
 					g1.fillRect(0, 0, image.getWidth(), image.getHeight());
-					drawImageFromPoints(g1,true);
+					if( loadedImage != null ) {
+						image1 = loadedImage;
+					} else {
+						drawImageFromPoints(g1,true);
+					}
 					g1.dispose();
 					boolean[][] bimg = toBoolean(image1);
-					removeNoise(bimg);
+					//removeNoise(bimg);
 					Rectangle p = new Rectangle(image1.getWidth(), image1.getHeight());
 					List<Rectangle> diff = ImageDiff.findEdges(bimg, p, 2, 2);
 
 					if( diff.size()== 0 ) {
 						throw new RuntimeException("No Image data");
 					}
+					
 					int translate = 0;
 					//  show drawing in the debug panel
 					for (int idx = 0,sz=diff.size(); idx < sz; idx++) {
