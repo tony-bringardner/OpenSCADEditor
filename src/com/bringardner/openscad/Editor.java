@@ -63,7 +63,6 @@ import com.bringardner.polygon.PolygonFrame;
 public class Editor extends JFrame {
 
 	private static final long serialVersionUID = 1L;
-
 	protected static final Preferences prefs = Preferences.userNodeForPackage(Editor.class);
 	private static final String KEY_SCREEN_LOCATION = "Location";
 	private static final String KEY_RECENT = "recent";
