@@ -220,13 +220,13 @@ public class PolygonFrame extends JFrame {
 	private JSpinner whiteThresholdSpinner;
 	private JLabel lblHoldTheControl;
 	protected Point lastMouse;
-	
+
 
 	/**
 	 * Create the frame.
 	 */
 	public PolygonFrame() {
-		
+
 		setIconImage(Editor.getOpenScadImage());
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setBounds(100, 100, 1197, 730);
@@ -275,30 +275,39 @@ public class PolygonFrame extends JFrame {
 				actionLoadImage();
 			}
 		});
-		
+
+		lblEpsilon = new JLabel("Epsilon");
+		lblEpsilon.setVisible(false);
+		controlPanel.add(lblEpsilon);
+
+		epsilonSpinner = new JSpinner();
+		epsilonSpinner.setVisible(false);
+		epsilonSpinner.setModel(new SpinnerNumberModel(1.0, 0.0, 10.0, 0.5));
+		controlPanel.add(epsilonSpinner);
+
 		drawingControlPanel = new JPanel();
 		controlPanel.add(drawingControlPanel);
-		
-				chckbxClosePath = new JCheckBox("Close Path");
-				drawingControlPanel.add(chckbxClosePath);
-				chckbxClosePath.addChangeListener(new ChangeListener() {
-					public void stateChanged(ChangeEvent e) {
-						if( drawingPanel != null ) {
-							drawingPanel.updateUI();
-						}
-					}
-				});
-				chckbxClosePath.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						//drawingPanel.updateUI();
-					}
-				});
+
+		chckbxClosePath = new JCheckBox("Close Path");
+		drawingControlPanel.add(chckbxClosePath);
+		chckbxClosePath.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent e) {
+				if( drawingPanel != null ) {
+					drawingPanel.updateUI();
+				}
+			}
+		});
+		chckbxClosePath.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				//drawingPanel.updateUI();
+			}
+		});
 
 		chckbxClosePath.setSelected(true);
-		
+
 		lblGridSnapTo = new JLabel("Grid Snap to");
 		drawingControlPanel.add(lblGridSnapTo);
-		
+
 		snapToSpinner = new JSpinner();
 		snapToSpinner.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
@@ -306,7 +315,7 @@ public class PolygonFrame extends JFrame {
 				drawingPanel.updateUI();
 			}
 		});
-		
+
 		snapToSpinner.setModel(new SpinnerNumberModel(new Integer(10), new Integer(0), null, new Integer(1)));
 		drawingControlPanel.add(snapToSpinner);
 
@@ -380,12 +389,18 @@ public class PolygonFrame extends JFrame {
 				Graphics2D g1 = (Graphics2D) image.getGraphics();
 				g1.setColor(Color.white);
 				g1.fillRect(0, 0, getWidth(), getHeight());
-			
+
 				g1.setColor(Color.black);
 
 				if( loadedImage != null) {
 					g1.drawImage(loadedImage, 10, 10, loadedImage.getWidth(), loadedImage.getHeight(), null);
 					g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
+					if( selection != null ) {
+						g.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0));
+						g.setColor(Color.LIGHT_GRAY);
+						g.draw(selection);
+						
+					}
 				} else {
 					drawGrid(g1);					
 					g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
@@ -497,7 +512,7 @@ public class PolygonFrame extends JFrame {
 				g.fillRect(0, 0, getWidth(), getHeight());
 
 				if( debugImage != null ) {
-					g.drawImage(debugImage, 0, 0, null);
+					g.drawImage(debugImage, 30, 30, null);
 				} else {
 					g.drawString("No Debug Image", getWidth()/2, getHeight()/2);
 				}
@@ -507,7 +522,7 @@ public class PolygonFrame extends JFrame {
 
 		debugPanel.addMouseMotionListener(new MouseMotionAdapter() {
 
-		
+
 			@Override
 			public void mouseMoved(MouseEvent e) {
 				lastMouse = e.getPoint();
@@ -571,7 +586,7 @@ public class PolygonFrame extends JFrame {
 				super.mouseMoved(e);
 			}
 		});
-		
+
 		drawingPanel.addMouseMotionListener(new MouseAdapter() {
 			@Override
 			public void mouseMoved(MouseEvent e) {
@@ -579,8 +594,7 @@ public class PolygonFrame extends JFrame {
 				if( popupToCurve.isShowing() || popupToLine.isShowing()) {
 					return;
 				}
-				
-				lastMouse = e.getPoint();
+
 				currentPoint = -1;
 				currentLine = -1;
 				currentSegment = null;
@@ -610,16 +624,28 @@ public class PolygonFrame extends JFrame {
 			@Override
 			public void mouseDragged(MouseEvent e) {
 				lastMouse = e.getPoint();
-				
-				if(currentSegment != null && !addMode && currentPoint >= 0 && selected) {
-					Point p = e.getPoint();
 
-					p.x +=  snapTo - (p.x % snapTo);
-					p.y +=  snapTo - (p.y % snapTo);
-					currentSegment.update(currentPoint, new Point2D.Double(p.x, p.y));
-					drawingPanel.updateUI();					
+				if(loadedImage == null) {
+					if(currentSegment != null && !addMode && currentPoint >= 0 && selected) {
+						Point p = e.getPoint();
+
+						p.x +=  snapTo - (p.x % snapTo);
+						p.y +=  snapTo - (p.y % snapTo);
+						currentSegment.update(currentPoint, new Point2D.Double(p.x, p.y));
+						drawingPanel.updateUI();					
+					}
+				} else {
+					//  image is loaded
+					
+					if( selection == null ) {
+						selection = new Rectangle(lastMouse);
+						selection.width = selection.height = 1;
+					} else {
+						selection.setBounds(selection.x, selection.y, Math.abs(selection.x-lastMouse.x), Math.abs(selection.y-lastMouse.y));
+					}
+					drawingPanel.updateUI();
+					
 				}
-
 			}
 
 		});
@@ -634,6 +660,7 @@ public class PolygonFrame extends JFrame {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				lastMouse = e.getPoint();
+				
 				if(loadedImage == null) {
 					if(addMode) {
 						currentSegment = null;
@@ -671,6 +698,7 @@ public class PolygonFrame extends JFrame {
 			@Override
 			public void mousePressed(MouseEvent e) {
 				lastMouse = e.getPoint();
+				selection = null;
 				if(currentLine >=0  && e.getButton() == 3 ) {
 					Point pp = e.getPoint();
 					for (Segment s : segments) {
@@ -724,7 +752,7 @@ public class PolygonFrame extends JFrame {
 			}
 		});
 		popupToCurve.add(item);
-		
+
 		item = new JMenuItem("Remove segment");
 		item.addActionListener(new ActionListener() {
 
@@ -733,10 +761,10 @@ public class PolygonFrame extends JFrame {
 				actionRemoveSegmwent();
 			}
 		});
-		
+
 		popupToCurve.add(item);
 
-		
+
 		popupToLine = new JPopupMenu("curve pop");
 		item = new JMenuItem("Add control point");
 		item.addActionListener(new ActionListener() {
@@ -769,7 +797,7 @@ public class PolygonFrame extends JFrame {
 		});
 
 		popupToLine.add(item);
-		
+
 		item = new JMenuItem("Remove segment");
 		item.addActionListener(new ActionListener() {
 
@@ -778,7 +806,7 @@ public class PolygonFrame extends JFrame {
 				actionRemoveSegmwent();
 			}
 		});
-		
+
 		popupToLine.add(item);
 
 
@@ -806,7 +834,7 @@ public class PolygonFrame extends JFrame {
 				buf.append('\n');
 			}
 		}
-		
+
 		textArea.setText(buf.toString());
 	}
 
@@ -856,7 +884,7 @@ public class PolygonFrame extends JFrame {
 		for (int idx = 0, sz = segments.size(); idx < sz; idx++) {
 			Segment s = segments.get(idx);
 			s.recalcPaths();
-		
+
 			if( last != null  && last.points.size()>0 && s.points.size()>0) {
 				Point2D a = last.points.get(last.points.size()-1).point;
 				Point2D b = s.points.get(0).point;
@@ -870,10 +898,10 @@ public class PolygonFrame extends JFrame {
 		if( close ) {
 			if( chckbxClosePath.isSelected()) {
 				if( segments.size()>1) {
-				Point2D p1 = segments.get(0).points.get(0).point;
-				Point2D p2 = last.points.get(last.points.size()-1).point;
-				
-				g1.drawLine((int)p1.getX(), (int)p1.getY(), (int)p2.getX(), (int)p2.getY());
+					Point2D p1 = segments.get(0).points.get(0).point;
+					Point2D p2 = last.points.get(last.points.size()-1).point;
+
+					g1.drawLine((int)p1.getX(), (int)p1.getY(), (int)p2.getX(), (int)p2.getY());
 				}
 			}
 		}
@@ -913,7 +941,7 @@ public class PolygonFrame extends JFrame {
 		if( currentSegment != null ) {
 			if( currentSegment.type == SegmentType.Curve) {
 				currentSegment.type = SegmentType.Line;
-				
+
 				while( currentSegment.points.size()>2) {
 					currentSegment.points.remove(1);	
 				}
@@ -943,6 +971,8 @@ public class PolygonFrame extends JFrame {
 	File file = new File("C:\\Users\\Tony\\Documents\\ATest.png");
 	private BufferedImage loadedImage;
 	private int currentLine;
+	private Rectangle selection;
+
 	protected void actionLoadImage() {
 		lblHoldTheControl.setVisible(false);
 		JFileChooser fc = new JFileChooser();
@@ -1000,7 +1030,7 @@ public class PolygonFrame extends JFrame {
 
 		if( g != null ) {
 			g.setColor(Color.red);
-			
+
 			if( chckbxClosePath.isSelected()) {
 				g.fill(path);
 			} else {
@@ -1066,40 +1096,64 @@ public class PolygonFrame extends JFrame {
 				public void run() {
 
 					Graphics2D dbg = (Graphics2D) debugImage.getGraphics();
-					int w = image.getWidth();
 					int firstY = 0;
-					int firstX = w;
+					int firstX = image.getWidth();
 					BufferedImage image1 = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
-					Graphics2D g1 = (Graphics2D) image1.getGraphics();
-					g1.setColor(Color.white);
-					g1.fillRect(0, 0, image.getWidth(), image.getHeight());
 					if( loadedImage != null ) {
+						image1 = new BufferedImage(loadedImage.getWidth(), loadedImage.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
 						image1 = loadedImage;
+						if( selection != null ) {
+							
+							if( selection.width > 1 || selection.height>1) {
+								int w = selection.width;
+								if( selection.x+w > loadedImage.getWidth()) {
+									w = loadedImage.getWidth()-selection.x;
+								}
+								int h = selection.height;
+								if( selection.y+h > loadedImage.getHeight()) {
+									h = loadedImage.getHeight()-selection.y;
+								}
+								
+								image1 = loadedImage.getSubimage(selection.x, selection.y, w, h);
+							}
+						}
+						
 					} else {
+						Graphics2D g1 = (Graphics2D) image1.getGraphics();
+						g1.setColor(Color.white);
+						g1.fillRect(0, 0, image1.getWidth(), image1.getHeight());
+						g1.dispose();	
+						
 						drawImageFromPoints(g1,true);
 					}
-					g1.dispose();
 					boolean[][] bimg = toBoolean(image1);
-					//removeNoise(bimg);
+					if( loadedImage != null ) {
+						removeNoise(bimg);
+					}
 					Rectangle p = new Rectangle(image1.getWidth(), image1.getHeight());
 					List<Rectangle> diff = ImageDiff.findEdges(bimg, p, 2, 2);
 
 					if( diff.size()== 0 ) {
 						throw new RuntimeException("No Image data");
 					}
-					
+
 					int translate = 0;
 					//  show drawing in the debug panel
+					int color = Color.red.getRGB();
 					for (int idx = 0,sz=diff.size(); idx < sz; idx++) {
 						Rectangle r = diff.get(idx);
-						for(int y= r.y; y < (r.y+r.height); y++ ) {
-							for(int x= r.x; x < (r.x+r.width); x++ ) {
+						for(int y= r.y,hh=(r.y+r.height)-1; y < hh; y++ ) {
+							for(int x= r.x,ww=(r.x+r.width)-1; x < ww; x++ ) {
 								if( bimg[y][x] ) {
-									debugImage.setRGB(x, y, Color.red.getRGB());
-									if( firstY == 0 ) {
-										firstY =  y;
-										firstX =  x;
+									try {
+										debugImage.setRGB(x, y, color);
+										if( firstY == 0 ) {
+											firstY =  y;
+											firstX =  x;
+										}
+									}catch (Exception e) {
 									}
+									
 								}
 							}
 						}
@@ -1109,7 +1163,18 @@ public class PolygonFrame extends JFrame {
 						List<Point> points1 = trace(null, p, bimg, firstX, firstY);
 						List<Point> points2 = removeDuplicates(dbg,points1);
 
-						setText(points2,translate);
+						List<Point2D> points3 = new ArrayList<Point2D>();
+						for (Point pp : points2) {
+							points3.add(new Point2D.Double(pp.x, pp.y));
+						}
+						List<Point2D> points4 = new ArrayList<Point2D>();
+						double epsilon = (double)epsilonSpinner.getValue();
+						if( epsilon > 0 ) {
+							LineSimplification.ramerDouglasPeucker(points3, epsilon, points4);
+						} else {
+							points4 = points3;
+						}
+						setText2D(points4,translate);
 						translate+= r.height;
 						firstY = 0;
 					}
@@ -1256,18 +1321,22 @@ public class PolygonFrame extends JFrame {
 
 	}
 
-	protected void setText2D(List<Point2D> list) {
+	protected void setText2D(List<Point2D> list, int translate) {
 		StringBuilder buf = new StringBuilder();
+		if( translate > 0 ) {
+			buf.append("\ntranslate([0,"+translate+",0])\n");
+		}
+
 		buf.append("\npolygon( points=\n\t[\n\t");
 
-		int minX = 0;
-		int minY = 0;
+		double minX = 0;
+		double minY = 0;
 
 		if( list.size() > 0 ) {
 			minX = minY = Integer.MAX_VALUE;
 			for (Point2D point : list) {
-				minX = (int) Math.min(minX, point.getX());
-				minY = (int) Math.min(minY, point.getY());
+				minX = Math.min(minX, point.getX());
+				minY = Math.min(minY, point.getY());
 			}
 		}
 
@@ -1279,17 +1348,17 @@ public class PolygonFrame extends JFrame {
 			}
 		}
 		buf.append("\n\t]\n);");
+
 		SwingUtilities.invokeLater(new Runnable() {
 
 			@Override
 			public void run() {
-				textArea.setText(buf.toString());
+				textArea.append(buf.toString());
 			}
 		});
 
 
 	}
-
 
 	private static class Direction {
 		public int xdir;
@@ -1329,6 +1398,8 @@ public class PolygonFrame extends JFrame {
 	private JPanel drawingControlPanel;
 	private JSpinner snapToSpinner;
 	private JLabel lblGridSnapTo;
+	private JLabel lblEpsilon;
+	private JSpinner epsilonSpinner;
 
 	public boolean isOn(Point p, boolean bimg[][]) {
 		boolean ret = false;
@@ -1520,76 +1591,6 @@ public class PolygonFrame extends JFrame {
 		}
 	}
 
-	protected void actionPolygon1() {
-		textArea.setText("");
-		if( loadedImage == null && !hasCurves ) {
-			List<Point2D> points = new ArrayList<Point2D>();
-			for (Segment segment : segments) {
-				for (ControlPoint p : segment.points) {
-					if( !points.contains(p.point)) {
-						points.add(p.point);
-					}
-				}
-			}
-			setText2D(points);
-		} else if( image != null ) {
-			debugImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
-			debugPanel.updateUI();
-
-			new Thread(new Runnable() {
-
-
-				@Override
-				public void run() {
-
-					Graphics2D dbg = (Graphics2D) debugImage.getGraphics();
-					int w = image.getWidth();
-					int firstY = 0;
-					int firstX = w;
-					BufferedImage image1 = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
-					Graphics2D g1 = (Graphics2D) image1.getGraphics();
-					g1.setColor(Color.white);
-					g1.fillRect(0, 0, image.getWidth(), image.getHeight());
-					drawImageFromPoints(g1,true);
-					g1.dispose();
-					boolean[][] bimg = toBoolean(image);
-					removeNoise(bimg);
-					Rectangle p = new Rectangle(image1.getWidth(), image1.getHeight());
-					List<Rectangle> diff = ImageDiff.findEdges(bimg, p, 2, 2);
-
-					if( diff.size()== 0 ) {
-						throw new RuntimeException("No Image data");
-					}
-					int translate = 0;
-					//  show drawing in the debug panel
-					for (int idx = 0,sz=diff.size(); idx < sz; idx++) {
-						Rectangle r = diff.get(idx);
-						for(int y= r.y; y < (r.y+r.height); y++ ) {
-							for(int x= r.x; x < (r.x+r.width); x++ ) {
-								if( bimg[y][x] ) {
-									debugImage.setRGB(x, y, Color.red.getRGB());
-									if( firstY == 0 ) {
-										firstY =  y;
-										firstX =  x;
-									}
-								}
-							}
-						}
-
-						updateDebug(dbg);
-
-						List<Point> points1 = trace(null, p, bimg, firstX, firstY);
-						List<Point> points2 = removeDuplicates(dbg,points1);
-
-						setText(points2,translate);
-						translate+= r.height;
-						firstY = 0;
-					}
-				}
-			}).start();
-		}
-	}
-
 	public static void drawSegment(Graphics2D g1,Segment segment) {
 		g1.setColor(Color.black);
 		if( segment.type == SegmentType.Curve) {
@@ -1617,7 +1618,7 @@ public class PolygonFrame extends JFrame {
 		} else {
 			if( segment.points.size() == 2) {
 				g1.drawLine((int)segment.points.get(0).point.getX(),(int) segment.points.get(0).point.getY(), 
-					    (int)segment.points.get(1).point.getX(),	 (int)segment.points.get(1).point.getY());
+						(int)segment.points.get(1).point.getX(),	 (int)segment.points.get(1).point.getY());
 			}
 		}
 	}
