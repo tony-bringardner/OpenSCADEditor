@@ -30,9 +30,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -64,9 +66,57 @@ public class PolygonFrame extends JFrame {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	private static Color gridColor = new Color(Color.lightGray.getRed(), Color.lightGray.getGreen(), Color.lightGray.getBlue(), 100);
 	private JPanel contentPane;
+	private enum LineCap {BUTT,ROUND,SQUARE};
+	private enum LineJoin {MITER,ROUND,BEVEL};
+	private BufferedImage image;
+	private BufferedImage debugImage;
+	private List<Segment> segments = new ArrayList<>();
 
 
+	private JPanel drawingPanel;
+	protected int currentPoint;
+	protected Segment currentSegment;
+
+	private boolean selected = false;
+
+	private JTextArea textArea;
+	private JPopupMenu popupToCurve;
+	private JPopupMenu popupToLine;
+	protected boolean addMode;
+	private Double debugPoint;
+	protected boolean hasCurves;
+	private JSpinner lineWidthSpinner;
+	private int snapTo = 8;
+	private JSpinner whiteThresholdSpinner;
+	private JLabel lblHoldTheControl;
+	protected Point lastMouse;
+	
+	Direction north = new Direction("North",0,-1,-1,0);
+	Direction west = new Direction("West",-1,0,0,+1);
+	Direction south = new Direction("South",0,1,1,0);
+	Direction east = new Direction("East",1,0,0,-1);
+	Direction dirs [] = {north,east,south,west};
+
+	private JSpinner noiseSpinner;
+	private JPanel imageControlPanel;
+	private JCheckBox invertImageCheckbox;
+	private JCheckBox chckbxClosePath;
+	private JPanel debugControlPanel;
+	private JButton btnPrintPoints;
+	private JPanel drawingControlPanel;
+	private JSpinner snapToSpinner;
+	private JLabel lblGridSnapTo;
+	private JLabel lblEpsilon;
+	private JSpinner epsilonSpinner;
+	private JLabel lblCap;
+	
+	private JLabel lblJoin;
+	private JComboBox<LineCap> capComboBox;
+	private JComboBox<LineJoin> joinComboBox;
+
+	
 	/**
 	 * Launch the application.
 	 */
@@ -198,28 +248,6 @@ public class PolygonFrame extends JFrame {
 
 	}
 
-	BufferedImage image;
-	BufferedImage debugImage;
-	private List<Segment> segments = new ArrayList<>();
-
-
-	private JPanel drawingPanel;
-	protected int currentPoint;
-	protected Segment currentSegment;
-
-	private boolean selected = false;
-
-	private JTextArea textArea;
-	private JPopupMenu popupToCurve;
-	private JPopupMenu popupToLine;
-	protected boolean addMode;
-	private Double debugPoint;
-	protected boolean hasCurves;
-	private JSpinner lineWidthSpinner;
-	private int snapTo = 8;
-	private JSpinner whiteThresholdSpinner;
-	private JLabel lblHoldTheControl;
-	protected Point lastMouse;
 
 
 	/**
@@ -239,18 +267,6 @@ public class PolygonFrame extends JFrame {
 		FlowLayout fl_controlPanel = (FlowLayout) controlPanel.getLayout();
 		fl_controlPanel.setAlignment(FlowLayout.LEFT);
 		contentPane.add(controlPanel, BorderLayout.NORTH);
-
-		JLabel lblLineWidth = new JLabel("Line Width");
-		controlPanel.add(lblLineWidth);
-
-		lineWidthSpinner = new JSpinner();
-		lineWidthSpinner.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				drawingPanel.updateUI();
-			}
-		});
-		lineWidthSpinner.setModel(new SpinnerNumberModel(new Integer(4), new Integer(1), null, new Integer(1)));
-		controlPanel.add(lineWidthSpinner);
 
 		JButton btnClear = new JButton("Clear");
 		btnClear.addActionListener(new ActionListener() {
@@ -277,16 +293,52 @@ public class PolygonFrame extends JFrame {
 		});
 
 		lblEpsilon = new JLabel("Epsilon");
-		lblEpsilon.setVisible(false);
+		lblEpsilon.setToolTipText("Polygon simplification threshold.");
 		controlPanel.add(lblEpsilon);
 
 		epsilonSpinner = new JSpinner();
-		epsilonSpinner.setVisible(false);
-		epsilonSpinner.setModel(new SpinnerNumberModel(1.0, 0.0, 10.0, 0.5));
+		epsilonSpinner.setModel(new SpinnerNumberModel(1.0, 0.0, 100.0, 0.5));
+		epsilonSpinner.setToolTipText("Polygon simplification threshold.");
 		controlPanel.add(epsilonSpinner);
 
 		drawingControlPanel = new JPanel();
 		controlPanel.add(drawingControlPanel);
+		
+				JLabel lblLineWidth = new JLabel("Line Width");
+				drawingControlPanel.add(lblLineWidth);
+		
+				lineWidthSpinner = new JSpinner();
+				drawingControlPanel.add(lineWidthSpinner);
+				lineWidthSpinner.addChangeListener(new ChangeListener() {
+					public void stateChanged(ChangeEvent e) {
+						drawingPanel.updateUI();
+					}
+				});
+				lineWidthSpinner.setModel(new SpinnerNumberModel(new Integer(4), new Integer(1), null, new Integer(1)));
+		
+		lblCap = new JLabel("Cap");
+		drawingControlPanel.add(lblCap);
+		
+		capComboBox = new JComboBox<LineCap>();
+		capComboBox.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				drawingPanel.updateUI();
+			}
+		});
+		capComboBox.setModel(new DefaultComboBoxModel<LineCap>(LineCap.values()));
+		drawingControlPanel.add(capComboBox);
+		
+		lblJoin = new JLabel("Join");
+		drawingControlPanel.add(lblJoin);
+		
+		joinComboBox = new JComboBox<LineJoin>();
+		joinComboBox.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				drawingPanel.updateUI();
+			}
+		});
+		joinComboBox.setModel(new DefaultComboBoxModel<LineJoin>(LineJoin.values()));
+		drawingControlPanel.add(joinComboBox);
 
 		chckbxClosePath = new JCheckBox("Close Path");
 		drawingControlPanel.add(chckbxClosePath);
@@ -295,11 +347,6 @@ public class PolygonFrame extends JFrame {
 				if( drawingPanel != null ) {
 					drawingPanel.updateUI();
 				}
-			}
-		});
-		chckbxClosePath.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				//drawingPanel.updateUI();
 			}
 		});
 
@@ -390,7 +437,6 @@ public class PolygonFrame extends JFrame {
 				g1.setColor(Color.white);
 				g1.fillRect(0, 0, getWidth(), getHeight());
 
-				g1.setColor(Color.black);
 
 				if( loadedImage != null) {
 					g1.drawImage(loadedImage, 10, 10, loadedImage.getWidth(), loadedImage.getHeight(), null);
@@ -402,8 +448,8 @@ public class PolygonFrame extends JFrame {
 						
 					}
 				} else {
+					
 					drawGrid(g1);					
-					g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
 					drawImageFromPoints(g1,false);
 					g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
 
@@ -482,7 +528,6 @@ public class PolygonFrame extends JFrame {
 
 				if( debugPoint != null ) {
 					g.setColor(Color.ORANGE);
-					//g.fillRect((int)debugPoint.getX()-4, (int)debugPoint.getY()-4, 8, 8);
 				}
 
 				if( addMode && lastMouse != null ) {
@@ -520,15 +565,6 @@ public class PolygonFrame extends JFrame {
 		};
 		debugPanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"), "Result Panel", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
 
-		debugPanel.addMouseMotionListener(new MouseMotionAdapter() {
-
-
-			@Override
-			public void mouseMoved(MouseEvent e) {
-				lastMouse = e.getPoint();
-				debugPanel.setToolTipText(""+e.getX()+","+e.getY());
-			}
-		});
 
 		splitPane.setRightComponent(debugPanel);
 
@@ -547,7 +583,11 @@ public class PolygonFrame extends JFrame {
 
 			@Override
 			public void mouseMoved(MouseEvent e) {
-				drawingPanel.setToolTipText(""+e.getX()+","+e.getY());
+				if(!addMode && loadedImage == null && segments.size() == 0 ) {
+					drawingPanel.setToolTipText("Press and hold CTRL to add points at "+e.getX()+","+e.getY());
+				} else {
+					drawingPanel.setToolTipText(""+e.getX()+","+e.getY());
+				}
 			}
 		});
 
@@ -838,7 +878,7 @@ public class PolygonFrame extends JFrame {
 		textArea.setText(buf.toString());
 	}
 
-	Color gridColor = new Color(Color.lightGray.getRed(), Color.lightGray.getGreen(), Color.lightGray.getBlue(), 100);
+	
 
 	protected void drawGrid(Graphics2D g) {
 		int w = drawingPanel.getWidth();
@@ -867,8 +907,10 @@ public class PolygonFrame extends JFrame {
 	protected void actionClear() {
 		segments.clear();
 		loadedImage = null;
+		debugImage = null;
 		setThresholdVisbility();
 		drawingPanel.updateUI();
+		debugPanel.updateUI();
 		lblHoldTheControl.setVisible(true);
 	}
 
@@ -878,9 +920,10 @@ public class PolygonFrame extends JFrame {
 	}
 
 	protected void drawImageFromPoints(Graphics2D g1,boolean close) {
+		GeneralPath path = new GeneralPath();
+		
 		Segment last = null;
-		g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
-
+		//g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,0, 2));
 		for (int idx = 0, sz = segments.size(); idx < sz; idx++) {
 			Segment s = segments.get(idx);
 			s.recalcPaths();
@@ -889,22 +932,25 @@ public class PolygonFrame extends JFrame {
 				Point2D a = last.points.get(last.points.size()-1).point;
 				Point2D b = s.points.get(0).point;
 				g1.drawLine((int)a.getX(), (int)a.getY(), (int)b.getX(), (int)b.getY());
+			} else {
+				Point2D p = s.points.get(0).point;
+				path.moveTo(p.getX(), p.getY());
 			}
 
-			drawSegment(g1,s);
+			drawSegment(path,s);
 			last = s;
 		}
 
 		if( close ) {
 			if( chckbxClosePath.isSelected()) {
 				if( segments.size()>1) {
-					Point2D p1 = segments.get(0).points.get(0).point;
-					Point2D p2 = last.points.get(last.points.size()-1).point;
-
-					g1.drawLine((int)p1.getX(), (int)p1.getY(), (int)p2.getX(), (int)p2.getY());
+					path.closePath();
 				}
 			}
 		}
+		g1.setColor(Color.black);
+		g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,capComboBox.getSelectedIndex(), joinComboBox.getSelectedIndex()));
+		g1.draw(path);
 	}
 
 	protected void actionRemoveControllPoint() {
@@ -1029,12 +1075,12 @@ public class PolygonFrame extends JFrame {
 		path.closePath();
 
 		if( g != null ) {
-			g.setColor(Color.red);
+			g.setColor(new Color(Color.red.getRed(), Color.red.getGreen(), Color.red.getBlue(), 100));
 
 			if( chckbxClosePath.isSelected()) {
 				g.fill(path);
 			} else {
-				g.setStroke(new BasicStroke((int)(lineWidthSpinner.getValue())+2));
+				g.setStroke(new BasicStroke((int)(lineWidthSpinner.getValue())+2,capComboBox.getSelectedIndex(), joinComboBox.getSelectedIndex()));
 				g.draw(path);	
 			}
 			updateDebug(g);
@@ -1122,9 +1168,10 @@ public class PolygonFrame extends JFrame {
 						Graphics2D g1 = (Graphics2D) image1.getGraphics();
 						g1.setColor(Color.white);
 						g1.fillRect(0, 0, image1.getWidth(), image1.getHeight());
-						g1.dispose();	
+							
 						
 						drawImageFromPoints(g1,true);
+						g1.dispose();
 					}
 					boolean[][] bimg = toBoolean(image1);
 					if( loadedImage != null ) {
@@ -1139,7 +1186,8 @@ public class PolygonFrame extends JFrame {
 
 					int translate = 0;
 					//  show drawing in the debug panel
-					int color = Color.red.getRGB();
+					int color = Color.green.getRGB();
+					color = new Color(Color.green.getRed(), Color.green.getGreen(), Color.green.getBlue(), 100).getRGB();
 					for (int idx = 0,sz=diff.size(); idx < sz; idx++) {
 						Rectangle r = diff.get(idx);
 						for(int y= r.y,hh=(r.y+r.height)-1; y < hh; y++ ) {
@@ -1153,7 +1201,6 @@ public class PolygonFrame extends JFrame {
 										}
 									}catch (Exception e) {
 									}
-									
 								}
 							}
 						}
@@ -1161,20 +1208,14 @@ public class PolygonFrame extends JFrame {
 						updateDebug(dbg);
 
 						List<Point> points1 = trace(null, p, bimg, firstX, firstY);
-						List<Point> points2 = removeDuplicates(dbg,points1);
-
-						List<Point2D> points3 = new ArrayList<Point2D>();
-						for (Point pp : points2) {
-							points3.add(new Point2D.Double(pp.x, pp.y));
-						}
-						List<Point2D> points4 = new ArrayList<Point2D>();
 						double epsilon = (double)epsilonSpinner.getValue();
-						if( epsilon > 0 ) {
-							LineSimplification.ramerDouglasPeucker(points3, epsilon, points4);
-						} else {
-							points4 = points3;
-						}
-						setText2D(points4,translate);
+						if( epsilon >= 0 ) {
+							List<Point> points2 = new ArrayList<Point>();
+							LineSimplification.ramerDouglasPeucker(points1, epsilon, points2);
+							points1 = points2;
+						} 
+						List<Point> points2 = removeDuplicates(dbg,points1);
+						setText(points2,translate);
 						translate+= r.height;
 						firstY = 0;
 					}
@@ -1192,7 +1233,6 @@ public class PolygonFrame extends JFrame {
 					int cnt = countNeighbors(bimg,x,y);
 					if( cnt <= threshold) {
 						bimg[y][x] = false;
-						//System.out.println("remove "+x+","+y);
 					}
 				}
 			}
@@ -1380,26 +1420,6 @@ public class PolygonFrame extends JFrame {
 
 	}
 
-	Direction north = new Direction("North",0,-1,-1,0);
-
-	Direction west = new Direction("West",-1,0,0,+1);
-
-	Direction south = new Direction("South",0,1,1,0);
-
-	Direction east = new Direction("East",1,0,0,-1);
-
-	Direction dirs [] = {north,east,south,west};
-	private JSpinner noiseSpinner;
-	private JPanel imageControlPanel;
-	private JCheckBox invertImageCheckbox;
-	private JCheckBox chckbxClosePath;
-	private JPanel debugControlPanel;
-	private JButton btnPrintPoints;
-	private JPanel drawingControlPanel;
-	private JSpinner snapToSpinner;
-	private JLabel lblGridSnapTo;
-	private JLabel lblEpsilon;
-	private JSpinner epsilonSpinner;
 
 	public boolean isOn(Point p, boolean bimg[][]) {
 		boolean ret = false;
@@ -1591,7 +1611,61 @@ public class PolygonFrame extends JFrame {
 		}
 	}
 
-	public static void drawSegment(Graphics2D g1,Segment segment) {
+	protected void drawImageFromPoints1(Graphics2D g1,boolean close) {
+		Segment last = null;
+		g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,capComboBox.getSelectedIndex(), joinComboBox.getSelectedIndex()));
+		//g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,0, 2));
+		for (int idx = 0, sz = segments.size(); idx < sz; idx++) {
+			Segment s = segments.get(idx);
+			s.recalcPaths();
+	
+			if( last != null  && last.points.size()>0 && s.points.size()>0) {
+				Point2D a = last.points.get(last.points.size()-1).point;
+				Point2D b = s.points.get(0).point;
+				g1.drawLine((int)a.getX(), (int)a.getY(), (int)b.getX(), (int)b.getY());
+			}
+	
+			drawSegment1(g1,s);
+			last = s;
+		}
+	
+		if( close ) {
+			if( chckbxClosePath.isSelected()) {
+				if( segments.size()>1) {
+					Point2D p1 = segments.get(0).points.get(0).point;
+					Point2D p2 = last.points.get(last.points.size()-1).point;
+	
+					g1.drawLine((int)p1.getX(), (int)p1.getY(), (int)p2.getX(), (int)p2.getY());
+				}
+			}
+		}
+	}
+
+	public static void drawSegment(GeneralPath path,Segment segment) {
+		if( segment.type == SegmentType.Curve) {
+			if( segment.points.size() == 3) {
+				//path.moveTo(segment.points.get(0).point.getX(), segment.points.get(0).point.getY());
+				path.quadTo(segment.points.get(1).point.getX(), segment.points.get(1).point.getY(), 
+						segment.points.get(2).point.getX(), segment.points.get(2).point.getY());
+			} else if( segment.points.size() == 4) {
+				//path.moveTo(segment.points.get(0).point.getX(), segment.points.get(0).point.getY());
+				path.curveTo(segment.points.get(1).point.getX(), segment.points.get(1).point.getY(), 
+						segment.points.get(2).point.getX(), segment.points.get(2).point.getY(),
+						segment.points.get(3).point.getX(), segment.points.get(3).point.getY()
+						);
+			} else if( segment.points.size() == 2) {
+				path.lineTo((int)segment.points.get(1).point.getX(),	 (int)segment.points.get(1).point.getY());
+			} else {
+				throw new RuntimeException("Curve with too many points = "+segment.points.size());
+			}
+		} else {
+			if( segment.points.size() == 2) {
+				path.lineTo((int)segment.points.get(1).point.getX(),	 (int)segment.points.get(1).point.getY());
+			}
+		}
+	}
+
+	public static void drawSegment1(Graphics2D g1,Segment segment) {
 		g1.setColor(Color.black);
 		if( segment.type == SegmentType.Curve) {
 			if( segment.points.size() == 3) {

@@ -1,5 +1,6 @@
 package com.bringardner.polygon;
 
+import java.awt.Point;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +30,13 @@ public class LineSimplification {
 		return Math.hypot(ax, ay);
 	}
 
-	public static void ramerDouglasPeucker(List<Point2D> pointList, double epsilon, List<Point2D> out) {
-		if (pointList.size() < 2) throw new IllegalArgumentException("Not enough points to simplify");
+	public static void ramerDouglasPeucker(List<Point> pointList, double epsilon, List<Point> out) {
+		if (pointList.size() < 2) {
+			for (Point p : pointList) {
+				out.add(p);
+			}
+			return;
+		}
 
 		// Find the point with the maximum distance from line between the start and end
 		double dmax = 0.0;
@@ -46,10 +52,10 @@ public class LineSimplification {
 
 		// If max distance is greater than epsilon, recursively simplify
 		if (dmax > epsilon) {
-			List<Point2D> recResults1 = new ArrayList<>();
-			List<Point2D> recResults2 = new ArrayList<>();
-			List<Point2D> firstLine = pointList.subList(0, index + 1);
-			List<Point2D> lastLine = pointList.subList(index, pointList.size());
+			List<Point> recResults1 = new ArrayList<>();
+			List<Point> recResults2 = new ArrayList<>();
+			List<Point> firstLine = pointList.subList(0, index + 1);
+			List<Point> lastLine = pointList.subList(index, pointList.size());
 			ramerDouglasPeucker(firstLine, epsilon, recResults1);
 			ramerDouglasPeucker(lastLine, epsilon, recResults2);
 
@@ -88,8 +94,49 @@ Points remaining after simplification:
 		pointList.add( new Point2D.Double(9.0, 9.0));
 
 		List<Point2D> pointListOut = new ArrayList<>();
-		ramerDouglasPeucker(pointList, 1.0, pointListOut);
+		ramerDouglasPeucker2D(pointList, 1.0, pointListOut);
 		System.out.println("Points remaining after simplification:");
 		pointListOut.forEach(System.out::println);
+	}
+
+	public static void ramerDouglasPeucker2D(List<Point2D> pointList, double epsilon, List<Point2D> out) {
+		if (pointList.size() < 2) {
+			for (Point2D p : pointList) {
+				out.add(p);
+			}
+			return;
+		}
+	
+		// Find the point with the maximum distance from line between the start and end
+		double dmax = 0.0;
+		int index = 0;
+		int end = pointList.size() - 1;
+		for (int i = 1; i < end; ++i) {
+			double d = perpendicularDistance(pointList.get(i), pointList.get(0), pointList.get(end));
+			if (d > dmax) {
+				index = i;
+				dmax = d;
+			}
+		}
+	
+		// If max distance is greater than epsilon, recursively simplify
+		if (dmax > epsilon) {
+			List<Point2D> recResults1 = new ArrayList<>();
+			List<Point2D> recResults2 = new ArrayList<>();
+			List<Point2D> firstLine = pointList.subList(0, index + 1);
+			List<Point2D> lastLine = pointList.subList(index, pointList.size());
+			ramerDouglasPeucker2D(firstLine, epsilon, recResults1);
+			ramerDouglasPeucker2D(lastLine, epsilon, recResults2);
+	
+			// build the result list
+			out.addAll(recResults1.subList(0, recResults1.size() - 1));
+			out.addAll(recResults2);
+			if (out.size() < 2) throw new RuntimeException("Problem assembling output");
+		} else {
+			// Just return start and end points
+			out.clear();
+			out.add(pointList.get(0));
+			out.add(pointList.get(pointList.size() - 1));
+		}
 	}
 }
