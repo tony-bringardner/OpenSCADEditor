@@ -9,6 +9,7 @@ import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GridLayout;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
@@ -385,19 +386,23 @@ public class PolygonFrame extends JFrame {
 		btnHelp.setIcon(new ImageIcon(Editor.class.getResource("/HelpBlack.png")));
 		btnHelp.setToolTipText("Help");
 		controlPanel.add(btnHelp);
-
+		//Image White Threshold 
 		JLabel whiteThresholdLabel = new JLabel("Image White Threshold");
+		whiteThresholdLabel.setToolTipText("Threshold used when converting an image to black and white");
 		imageControlPanel.add(whiteThresholdLabel);
 
 		whiteThresholdSpinner = new JSpinner();
 		imageControlPanel.add(whiteThresholdSpinner);
 		whiteThresholdSpinner.setModel(new SpinnerNumberModel(200, 1, 255, 1));
-
+		whiteThresholdSpinner.setToolTipText(whiteThresholdLabel.getToolTipText());
+		
 		JLabel lblNoiseThreshold = new JLabel("Noise threshold");
 		imageControlPanel.add(lblNoiseThreshold);
-
+		// Neighbor 
+		lblNoiseThreshold.setToolTipText("Neighbor count when removing noise");
 		noiseSpinner = new JSpinner();
 		noiseSpinner.setModel(new SpinnerNumberModel(1, 0, 4, 1));
+		noiseSpinner.setToolTipText(lblNoiseThreshold.getToolTipText());
 		imageControlPanel.add(noiseSpinner);
 
 		invertImageCheckbox = new JCheckBox("Invert Image");
@@ -578,6 +583,8 @@ public class PolygonFrame extends JFrame {
 				actionPrintPoints();
 			}
 		});
+		debugControlPanel.setLayout(new GridLayout(0, 1, 0, 0));
+		
 		debugControlPanel.add(btnPrintPoints);
 		drawingPanel.addMouseMotionListener(new MouseMotionAdapter() {
 
@@ -1128,7 +1135,7 @@ public class PolygonFrame extends JFrame {
 
 	DebugFrame debugFrame;
 	boolean debug = false;
-
+	
 	protected void actionPolygon() {
 		textArea.setText("");
 		if( image != null ) {
