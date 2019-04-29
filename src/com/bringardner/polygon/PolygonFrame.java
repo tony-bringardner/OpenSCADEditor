@@ -248,7 +248,7 @@ public class PolygonFrame extends JFrame {
 			}
 		}
 
-		public void update(int currentPoint, Double point) {
+		public void update(int currentPoint, Point2D point) {
 			points.get(currentPoint).update(point);
 		}
 
@@ -616,7 +616,6 @@ public class PolygonFrame extends JFrame {
 
 			@Override
 			public void keyReleased(KeyEvent e) {
-				//System.out.println("key="+e);
 				if( e.getKeyCode() == KeyEvent.VK_CONTROL) {
 					drawingPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 					addMode = false;
@@ -684,29 +683,25 @@ public class PolygonFrame extends JFrame {
 			@Override
 			public void mouseDragged(MouseEvent e) {
 				lastMouse = e.getPoint();
-
+				if( popupToCurve.isShowing() || popupToLine.isShowing()) {
+					return;
+				}
 				if(loadedImage == null) {
 					if(currentSegment != null && !addMode && currentPoint >= 0 && selected) {
-						Point p = e.getPoint();
-
-						p.x +=  snapTo - (p.x % snapTo);
-						p.y +=  snapTo - (p.y % snapTo);
-						
-						currentSegment.update(currentPoint, new Point2D.Double(p.x, p.y));
+						currentSegment.update(currentPoint, snapTo(e.getPoint()));
 						drawingPanel.updateUI();					
 					}
 				} else {
 					//  image is loaded
 					if(currentSegment != null && !addMode && currentPoint >= 0 && selected) {
-						Point p = e.getPoint();
-
-						p.x +=  snapTo - (p.x % snapTo);
-						p.y +=  snapTo - (p.y % snapTo);
-						currentSegment.update(currentPoint, new Point2D.Double(p.x, p.y));
+						currentSegment.update(currentPoint, snapTo(e.getPoint()));
 						drawingPanel.updateUI();					
 					} else if( selection == null ) {
 						selection = new Rectangle(lastMouse);
 						selection.width = selection.height = 1;
+						segments.clear();
+						currentLine = currentPoint = -1;
+						currentSegment = null;
 					} else {
 						selection.setBounds(selection.x, selection.y, Math.abs(selection.x-lastMouse.x), Math.abs(selection.y-lastMouse.y));
 					}
@@ -727,7 +722,9 @@ public class PolygonFrame extends JFrame {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				lastMouse = e.getPoint();
-				
+				if( popupToCurve.isShowing() || popupToLine.isShowing()) {
+					return;
+				}
 				//if(loadedImage == null) {
 					if(addMode) {
 						int sz = segments.size();
@@ -758,7 +755,9 @@ public class PolygonFrame extends JFrame {
 						}
 
 						drawingPanel.updateUI();
-					} 
+					} else if( loadedImage != null ) {
+						segments.clear();
+					}
 				//}
 			}
 
@@ -792,7 +791,11 @@ public class PolygonFrame extends JFrame {
 
 			@Override
 			public void mouseReleased(MouseEvent e) {
+				
 				lastMouse = e.getPoint();
+				if( popupToCurve.isShowing() || popupToLine.isShowing()) {
+					return;
+				}
 				selected = false;
 				drawingPanel.updateUI();
 				if( selection != null ) {
@@ -1112,7 +1115,6 @@ public class PolygonFrame extends JFrame {
 	}
 
 	protected void actionConvertToCurve() {
-		//System.out.println("Convert1");
 		if( currentLine >= 0 && currentSegment != null) {
 			if( currentSegment.type == SegmentType.Line) {
 				Line2D line = new Line2D.Double(currentSegment.points.get(0).point, currentSegment.points.get(1).point);
@@ -1260,7 +1262,7 @@ public class PolygonFrame extends JFrame {
 					int firstX = image.getWidth();
 					BufferedImage image1 = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
 					if( loadedImage != null ) {
-						image1 = new BufferedImage(loadedImage.getWidth(), loadedImage.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+						
 						image1 = loadedImage;
 						if( selection != null ) {
 							
@@ -1276,6 +1278,25 @@ public class PolygonFrame extends JFrame {
 								
 								image1 = loadedImage.getSubimage(selection.x, selection.y, w, h);
 							}
+						} else if(segments.size()>2) {
+							GeneralPath path = new GeneralPath();
+							for (Segment s : segments) {
+								for (ControlPoint cp : s.points) {
+									if(path.getCurrentPoint() == null ) {
+										path.moveTo(cp.point.getX(), cp.point.getY());
+									} else {
+										path.lineTo(cp.point.getX(), cp.point.getY());
+									}
+								}
+							}
+							path.closePath();
+							image1 = new BufferedImage(loadedImage.getWidth(), loadedImage.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
+							Graphics2D g1 = (Graphics2D) image1.getGraphics();
+							g1.setColor(Color.white);
+							g1.fillRect(0, 0, image1.getWidth(), image1.getHeight());
+							g1.setClip(path);
+							g1.drawImage(loadedImage, 0, 0, null);
+							g1.dispose();
 						}
 						
 					} else {
@@ -1577,7 +1598,7 @@ public class PolygonFrame extends JFrame {
 			g.fillOval(x, y, 4, 4);
 			updateDebug(g);
 		}
-		//System.out.println("Start @ "+(x-r.x)+","+(y-r.y));
+	
 		if( debug ) {
 			if( debugFrame == null || !debugFrame.isDisplayable()) {
 				debugFrame = new DebugFrame();
@@ -1634,7 +1655,6 @@ public class PolygonFrame extends JFrame {
 					g.fillOval(p[1].x, p[1].y, 4, 4);
 					updateDebug(g);
 				}
-				//System.out.println("0="+p[0]+" 1="+p[1]);
 				throw new RuntimeException(" "+p[1]+" must be black");
 			}
 
@@ -1705,13 +1725,12 @@ public class PolygonFrame extends JFrame {
 		} 
 
 
-		//System.out.println("end x="+x+" ox="+ox+" y="+y+" oy="+oy);
 		return ret;
 	}
 
 
 	public void logError(Throwable error, String title) {
-		//	error.printStackTrace();
+	
 		if(SwingUtilities.isEventDispatchThread()) {
 			JOptionPane.showMessageDialog(this, error.toString(), title, JOptionPane.ERROR_MESSAGE);
 		} else {
@@ -1728,7 +1747,7 @@ public class PolygonFrame extends JFrame {
 	protected void drawImageFromPoints1(Graphics2D g1,boolean close) {
 		Segment last = null;
 		g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,capComboBox.getSelectedIndex(), joinComboBox.getSelectedIndex()));
-		//g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,0, 2));
+		
 		for (int idx = 0, sz = segments.size(); idx < sz; idx++) {
 			Segment s = segments.get(idx);
 			s.recalcPaths();
@@ -1758,11 +1777,9 @@ public class PolygonFrame extends JFrame {
 	public static void drawSegment(GeneralPath path,Segment segment) {
 		if( segment.type == SegmentType.Curve) {
 			if( segment.points.size() == 3) {
-				//path.moveTo(segment.points.get(0).point.getX(), segment.points.get(0).point.getY());
 				path.quadTo(segment.points.get(1).point.getX(), segment.points.get(1).point.getY(), 
 						segment.points.get(2).point.getX(), segment.points.get(2).point.getY());
 			} else if( segment.points.size() == 4) {
-				//path.moveTo(segment.points.get(0).point.getX(), segment.points.get(0).point.getY());
 				path.curveTo(segment.points.get(1).point.getX(), segment.points.get(1).point.getY(), 
 						segment.points.get(2).point.getX(), segment.points.get(2).point.getY(),
 						segment.points.get(3).point.getX(), segment.points.get(3).point.getY()
