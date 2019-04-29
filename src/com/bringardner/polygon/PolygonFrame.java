@@ -48,6 +48,7 @@ import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
@@ -77,28 +78,30 @@ public class PolygonFrame extends JFrame {
 
 
 	private JPanel drawingPanel;
-	protected int currentPoint;
-	protected Segment currentSegment;
+	private  int currentPoint=-1;
+	private  Segment currentSegment;
+	private int segmentIndex=-1;
+
 
 	private boolean selected = false;
 
 	private JTextArea textArea;
 	private JPopupMenu popupToCurve;
 	private JPopupMenu popupToLine;
-	protected boolean addMode;
+	private  boolean addMode;
 	private Double debugPoint;
-	protected boolean hasCurves;
+	
 	private JSpinner lineWidthSpinner;
 	private int snapTo = 8;
 	private JSpinner whiteThresholdSpinner;
 	private JLabel lblHoldTheControl;
-	protected Point lastMouse;
+	private  Point lastMouse;
 	
-	Direction north = new Direction("North",0,-1,-1,0);
-	Direction west = new Direction("West",-1,0,0,+1);
-	Direction south = new Direction("South",0,1,1,0);
-	Direction east = new Direction("East",1,0,0,-1);
-	Direction dirs [] = {north,east,south,west};
+	private Direction north = new Direction("North",0,-1,-1,0);
+	private Direction west = new Direction("West",-1,0,0,+1);
+	private Direction south = new Direction("South",0,1,1,0);
+	private Direction east = new Direction("East",1,0,0,-1);
+	private Direction dirs [] = {north,east,south,west};
 
 	private JSpinner noiseSpinner;
 	private JPanel imageControlPanel;
@@ -116,6 +119,7 @@ public class PolygonFrame extends JFrame {
 	private JLabel lblJoin;
 	private JComboBox<LineCap> capComboBox;
 	private JComboBox<LineJoin> joinComboBox;
+	private int snapHalf;
 
 	
 	/**
@@ -143,9 +147,9 @@ public class PolygonFrame extends JFrame {
 			this.point = point;
 			this.ellipse = new Ellipse2D.Double(point.getX()-6, point.getY()-6, 12, 12);
 		}
-		public void update(Double point2) {
-			point.setLocation(point2.x,point2.y);
-			ellipse.setFrame(point2.x-6,point2.y-6,12,12);//,new 
+		public void update(Point2D point2) {
+			point.setLocation(point2.getX(),point2.getY());
+			ellipse.setFrame(point2.getX()-6,point2.getY()-6,12,12);//,new 
 		}
 	}
 
@@ -217,9 +221,10 @@ public class PolygonFrame extends JFrame {
 
 				}
 			} else {
-				if( points.size() < 3) {
+				int sz = points.size();
+				if( sz < 3) {
 					// nothing??
-				} else if( points.size() == 3) {
+				} else if( sz == 3) {
 					GeneralPath path = new GeneralPath();
 					Point2D a = points.get(0).point;
 					Point2D b = points.get(1).point;
@@ -227,7 +232,7 @@ public class PolygonFrame extends JFrame {
 					path.moveTo(a.getX(),a.getY());
 					path.quadTo(b.getX(), b.getY(), c.getX(), c.getY());
 					paths.add(path);
-				} else if( points.size() == 4) {
+				} else if( sz == 4) {
 					GeneralPath path = new GeneralPath();
 					Point2D a = points.get(0).point;
 					Point2D b = points.get(1).point;
@@ -304,6 +309,19 @@ public class PolygonFrame extends JFrame {
 
 		drawingControlPanel = new JPanel();
 		controlPanel.add(drawingControlPanel);
+				
+						lblGridSnapTo = new JLabel("Grid Snap to");
+						drawingControlPanel.add(lblGridSnapTo);
+				
+						snapToSpinner = new JSpinner();
+						snapToSpinner.addChangeListener(new ChangeListener() {
+							public void stateChanged(ChangeEvent e) {
+								actionResnap();
+							}
+						});
+						
+								snapToSpinner.setModel(new SpinnerNumberModel(new Integer(10), new Integer(0), null, new Integer(1)));
+								drawingControlPanel.add(snapToSpinner);
 		
 				JLabel lblLineWidth = new JLabel("Line Width");
 				drawingControlPanel.add(lblLineWidth);
@@ -342,6 +360,7 @@ public class PolygonFrame extends JFrame {
 		drawingControlPanel.add(joinComboBox);
 
 		chckbxClosePath = new JCheckBox("Close Path");
+		chckbxClosePath.setHorizontalTextPosition(SwingConstants.LEADING);
 		drawingControlPanel.add(chckbxClosePath);
 		chckbxClosePath.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent e) {
@@ -352,20 +371,6 @@ public class PolygonFrame extends JFrame {
 		});
 
 		chckbxClosePath.setSelected(true);
-
-		lblGridSnapTo = new JLabel("Grid Snap to");
-		drawingControlPanel.add(lblGridSnapTo);
-
-		snapToSpinner = new JSpinner();
-		snapToSpinner.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				snapTo = (int) snapToSpinner.getValue();
-				drawingPanel.updateUI();
-			}
-		});
-
-		snapToSpinner.setModel(new SpinnerNumberModel(new Integer(10), new Integer(0), null, new Integer(1)));
-		drawingControlPanel.add(snapToSpinner);
 
 		controlPanel.add(loadButton);
 
@@ -446,11 +451,16 @@ public class PolygonFrame extends JFrame {
 				if( loadedImage != null) {
 					g1.drawImage(loadedImage, 10, 10, loadedImage.getWidth(), loadedImage.getHeight(), null);
 					g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
+					g.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0));
+					g.setColor(Color.LIGHT_GRAY);
+					
 					if( selection != null ) {
-						g.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0));
-						g.setColor(Color.LIGHT_GRAY);
 						g.draw(selection);
 						
+					} else {
+						drawImageFromPoints(g1,false);
+						g.drawImage(image, 0, 0, getWidth(), getHeight(), null);
+						drawControls(g);
 					}
 				} else {
 					
@@ -467,16 +477,13 @@ public class PolygonFrame extends JFrame {
 				//  Control points
 				int lines = 0;
 				int points = 0;
-				hasCurves = false;
 				Point2D first = null;
 				Point2D last = null;
 				g.setColor(Color.green);
 				for (Segment segment : segments) {
 					if( segment.type==SegmentType.Line) {
 						lines++;
-					} else {
-						hasCurves = true;
-					}
+					} 
 					points+=segment.points.size();
 
 					for(int idx=0,sz=segment.points.size(); idx < sz; idx++ ) {
@@ -635,22 +642,27 @@ public class PolygonFrame extends JFrame {
 		});
 
 		drawingPanel.addMouseMotionListener(new MouseAdapter() {
+		
+			
 			@Override
 			public void mouseMoved(MouseEvent e) {
 				lastMouse = e.getPoint();
 				if( popupToCurve.isShowing() || popupToLine.isShowing()) {
 					return;
 				}
-
+				segmentIndex = -1;
 				currentPoint = -1;
 				currentLine = -1;
 				currentSegment = null;
 				Point2D p = new Point2D.Double(e.getX(), e.getY());
-				for (Segment s : segments) {
+				for (int sidx = 0, sz1 = segments.size(); sidx < sz1; sidx++) {
+					Segment s = segments.get(sidx);
+				
 					for (int idx=0,sz=s.points.size(); idx < sz; idx++) {
 						if( s.points.get(idx).ellipse.contains(p)) {
 							currentSegment = s;
 							currentPoint = idx;
+							segmentIndex = sidx;
 							break;
 						}
 					}
@@ -659,6 +671,7 @@ public class PolygonFrame extends JFrame {
 							if( s.paths.get(idx).contains(p)) {
 								currentSegment = s;
 								currentLine = idx;
+								segmentIndex = sidx;
 								break;
 							}
 						}
@@ -678,13 +691,20 @@ public class PolygonFrame extends JFrame {
 
 						p.x +=  snapTo - (p.x % snapTo);
 						p.y +=  snapTo - (p.y % snapTo);
+						
 						currentSegment.update(currentPoint, new Point2D.Double(p.x, p.y));
 						drawingPanel.updateUI();					
 					}
 				} else {
 					//  image is loaded
-					
-					if( selection == null ) {
+					if(currentSegment != null && !addMode && currentPoint >= 0 && selected) {
+						Point p = e.getPoint();
+
+						p.x +=  snapTo - (p.x % snapTo);
+						p.y +=  snapTo - (p.y % snapTo);
+						currentSegment.update(currentPoint, new Point2D.Double(p.x, p.y));
+						drawingPanel.updateUI();					
+					} else if( selection == null ) {
 						selection = new Rectangle(lastMouse);
 						selection.width = selection.height = 1;
 					} else {
@@ -708,22 +728,22 @@ public class PolygonFrame extends JFrame {
 			public void mouseClicked(MouseEvent e) {
 				lastMouse = e.getPoint();
 				
-				if(loadedImage == null) {
+				//if(loadedImage == null) {
 					if(addMode) {
+						int sz = segments.size();
 						currentSegment = null;
-						if( segments.size()>0) {
-							currentSegment = segments.get(segments.size()-1);
+						if( sz>0) {
+							currentSegment = segments.get(sz-1);
 						}
 						if( currentSegment == null ) {
-							if( segments.size() == 0 ) {
+							if( sz == 0 ) {
 								currentSegment = new Segment();
 								segments.add(currentSegment);
 							}
 						}
 
-						Point p = e.getPoint();
-						p.x +=  snapTo - (p.x % snapTo);
-						p.y +=  snapTo - (p.y % snapTo);
+						Point2D p = snapTo(e.getPoint());
+						
 						ControlPoint point = new ControlPoint(p);
 
 						if( currentSegment.points.size() < 2) {
@@ -739,7 +759,7 @@ public class PolygonFrame extends JFrame {
 
 						drawingPanel.updateUI();
 					} 
-				}
+				//}
 			}
 
 			@Override
@@ -759,7 +779,7 @@ public class PolygonFrame extends JFrame {
 							}
 						}
 					}
-				} else if( loadedImage == null ) {
+				} else {//if( loadedImage == null ) {
 					drawingPanel.requestFocus();
 					if( !addMode && currentSegment != null && currentPoint >= 0) {
 						selected = true;
@@ -775,6 +795,33 @@ public class PolygonFrame extends JFrame {
 				lastMouse = e.getPoint();
 				selected = false;
 				drawingPanel.updateUI();
+				if( selection != null ) {
+					segments.clear();
+					ControlPoint c1 = (new ControlPoint(new Point2D.Double(selection.x, selection.y)));
+					ControlPoint c2 = (new ControlPoint(new Point2D.Double(selection.x+selection.width, selection.y)));
+					ControlPoint c3 = (new ControlPoint(new Point2D.Double(selection.x+selection.width, selection.y+selection.height)));
+					ControlPoint c4 = (new ControlPoint(new Point2D.Double(selection.x, selection.y+selection.height)));
+					Segment s1 = new Segment();
+					s1.add(c1);
+					s1.add(c2);
+					segments.add(s1);
+					s1 = new Segment();
+					s1.add(c2);
+					s1.add(c3);
+					segments.add(s1);
+					
+					s1 = new Segment();
+					s1.add(c3);
+					s1.add(c4);
+					segments.add(s1);
+					
+					s1 = new Segment();
+					s1.add(c4);
+					s1.add(c1);
+					segments.add(s1);
+					
+					selection = null;
+				}
 			}
 
 		});
@@ -790,12 +837,12 @@ public class PolygonFrame extends JFrame {
 		});
 		popupToCurve.add(item);
 
-		item = new JMenuItem("Add control point");
+		item = new JMenuItem("Add control point to line");
 		item.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				actionConvertToCurve();
+				actionAddControllPoint();
 			}
 		});
 		popupToCurve.add(item);
@@ -813,7 +860,7 @@ public class PolygonFrame extends JFrame {
 
 
 		popupToLine = new JPopupMenu("curve pop");
-		item = new JMenuItem("Add control point");
+		item = new JMenuItem("Add control point to curve");
 		item.addActionListener(new ActionListener() {
 
 			@Override
@@ -859,9 +906,43 @@ public class PolygonFrame extends JFrame {
 
 	}
 
+	protected void actionResnap() {
+		snapTo = (int) snapToSpinner.getValue();
+		snapHalf = snapTo/2;
+		for (Segment s : segments) {
+			for (ControlPoint cp : s.points) {
+				cp.update(snapTo(cp.point));
+			}
+			
+		}
+		
+		drawingPanel.updateUI();
+		
+	}
+
+	private Point2D snapTo(Point2D p) {
+		int x = (int) p.getX();
+		int y = (int) p.getY();
+		
+		int delta =  (x % snapTo);
+		if( delta >= snapHalf) {
+			x +=  snapTo - delta;	
+		} else {
+			x -=  delta;
+		}
+		delta =  (y % snapTo);
+		 if( delta >= snapHalf) {
+			 y +=  snapTo - delta;	
+		 } else {
+			 y -=  delta;
+		 }
+		
+		 return new Point2D.Double(x, y);
+		
+	}
+
 	protected void actionRemoveSegmwent() {
 		int idx=segments.lastIndexOf(currentSegment);
-		System.out.println("idx="+idx);
 		if( idx == 0 || idx == segments.size()-1) {
 			segments.remove(idx);
 		} else {
@@ -955,8 +1036,14 @@ public class PolygonFrame extends JFrame {
 				}
 			}
 		}
-		g1.setColor(Color.black);
-		g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,capComboBox.getSelectedIndex(), joinComboBox.getSelectedIndex()));
+		if( loadedImage != null ) {
+			g1.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0));
+			g1.setColor(Color.LIGHT_GRAY);
+			
+		} else {
+			g1.setColor(Color.black);
+			g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,capComboBox.getSelectedIndex(), joinComboBox.getSelectedIndex()));
+		}
 		g1.draw(path);
 	}
 
@@ -986,6 +1073,26 @@ public class PolygonFrame extends JFrame {
 					currentSegment.points.add(2, new ControlPoint(debugPoint));
 					drawingPanel.updateUI();
 				}
+			} else {
+				ControlPoint a = currentSegment.points.get(0);
+				ControlPoint b = currentSegment.points.get(1);
+				
+				Line2D line = new Line2D.Double(a.point, b.point);
+				double cx = line.getBounds().getCenterX();
+				double cy = line.getBounds().getCenterY();
+				ControlPoint newPoint = new ControlPoint(new Point2D.Double(cx, cy));
+				currentSegment.points.set(1, newPoint);
+				
+				Segment newSegment = new Segment();
+				
+				
+				newSegment.add(newPoint);
+				newSegment.add(b);
+				
+				
+				segments.add(segmentIndex+1, newSegment);
+				currentPoint = 1;
+				drawingPanel.updateUI();
 			}
 		}
 	}
@@ -1021,7 +1128,7 @@ public class PolygonFrame extends JFrame {
 
 	}
 
-	File file = new File("C:\\Users\\Tony\\Documents\\ATest.png");
+	private File file = new File("C:\\Users\\Tony\\Documents\\ATest.png");
 	private BufferedImage loadedImage;
 	private int currentLine;
 	private Rectangle selection;
@@ -1133,8 +1240,8 @@ public class PolygonFrame extends JFrame {
 		return ret;
 	}
 
-	DebugFrame debugFrame;
-	boolean debug = false;
+	private DebugFrame debugFrame;
+	private boolean debug = false;
 	
 	protected void actionPolygon() {
 		textArea.setText("");
