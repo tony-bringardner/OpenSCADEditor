@@ -15,6 +15,8 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -172,11 +174,21 @@ public class Editor extends JFrame {
 	 */
 	public static void main(String[] args) {
 
-
+		String tmp = prefs.get(KEY_RECENT, "");
+		if( !tmp.isEmpty()) {
+			tmp = tmp.substring(1);
+			tmp = tmp.substring(0,tmp.length()-1);
+			for (String str : tmp.split("[,]")) {
+				str = str.trim();
+				if( !str.isEmpty()) {
+					recentFiles.add(str);
+				}
+			}
+		}
+		
 
 		Editor frame = new Editor();
 		if( procs.size() > 0 ) {
-
 			Editor last = procs.get(procs.size()-1);
 			Rectangle b = last.getBounds();
 			b.x+=50;
@@ -184,14 +196,6 @@ public class Editor extends JFrame {
 			frame.lastSize = b;
 			frame.setBounds(b);			
 		} else {
-			String tmp = prefs.get(KEY_RECENT, "");
-			if( !tmp.isEmpty()) {
-				tmp = tmp.substring(1);
-				tmp = tmp.substring(0,tmp.length()-1);
-				for (String str : tmp.split("[,]")) {
-					recentFiles.add(str.trim());
-				}
-			}
 			tmp = prefs.get(KEY_SCREEN_LOCATION, "");
 			if( !tmp.isEmpty()) {
 				String parts[] = tmp.split("[,]");
@@ -200,6 +204,7 @@ public class Editor extends JFrame {
 				}
 			}
 		}
+		
 		register(frame);
 
 		EventQueue.invokeLater(new Runnable() {
@@ -447,6 +452,16 @@ public class Editor extends JFrame {
 		contentPane.add(scrollPane, BorderLayout.CENTER);
 		editorPane.setLineWrap(false);
 		editorPane.setCodeFoldingEnabled(true);
+		editorPane.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				System.out.println("b="+e.getButton());
+				if( e.getButton() == MouseEvent.BUTTON3) {
+					String text = textAtCurrrentPosition();
+					System.out.println("text = "+text);
+				}
+			}
+		});
 		editorPane.addKeyListener(new KeyAdapter() {
 			private FindDialog findDialog;
 
@@ -632,7 +647,7 @@ public class Editor extends JFrame {
 			}
 		});
 
-
+		
 	}
 
 	protected void actionOpenPolygonWindow() {
@@ -961,15 +976,6 @@ public class Editor extends JFrame {
 				recentMenu.add(item);
 			}
 		}
-
-		String val = recentFiles.toString();
-		prefs.put(KEY_RECENT, val);
-
-		try {
-			prefs.flush();
-		} catch (BackingStoreException e) {
-			logError(e, "save recent");
-		}
 	}
 
 
@@ -1147,6 +1153,7 @@ public class Editor extends JFrame {
 		try {
 			originalText = editorPane.getText();
 			backupManager.save(tmp, editorPane.getText());
+			saveRecentFiles(tmp.getAbsolutePath());
 			setMyTitle(tmp.getName());
 		} catch (IOException e) {
 			logError(e, "Can't save to "+tmp);
@@ -1219,15 +1226,28 @@ public class Editor extends JFrame {
 		return ret;
 	}
 
+	private void saveRecentFiles(String tmp) {
+		recentFiles.remove(tmp);
+		recentFiles.add(0, tmp);
+
+		String val = recentFiles.toString();
+		prefs.put(KEY_RECENT, val);
+
+		try {
+			prefs.flush();
+		} catch (BackingStoreException e) {
+			logError(e, "save recent");
+		}
+
+	}
+	
 	private void load(File tmpFile) {
 		try {
 			originalText = new String(readFile(tmpFile));
 			editorPane.setText(originalText);
 			editorPane.setCaretPosition(1);
 			file = tmpFile;
-			String tmp = file.getAbsolutePath();
-			recentFiles.remove(tmp);
-			recentFiles.add(0, tmp);
+			saveRecentFiles(file.getAbsolutePath());
 			buildMenu();
 			new Thread(new Runnable() {
 
