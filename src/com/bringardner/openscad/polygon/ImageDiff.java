@@ -1,4 +1,4 @@
-package com.bringardner.polygon;
+package com.bringardner.openscad.polygon;
 
 import java.awt.Rectangle;
 import java.util.ArrayList;

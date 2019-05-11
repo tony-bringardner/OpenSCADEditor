@@ -6,7 +6,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.bringardner.polygon.PolygonFrame;
+import com.bringardner.openscad.polygon.PolygonFrame;
 
 class ImageTest {
 
@@ -25,7 +25,7 @@ class ImageTest {
 				{true,true,true},
 				{true,true,true}
 		};
-		int expect[] = {3,5,2,5,8,4,3,5,3};
+		int expect[] = {3,5,3,5,8,5,3,5,3};
 		int pos = 0;
 		for(int y=0; y < 3; y++ ) {
 			for(int x=0; x < 3; x++ ) {

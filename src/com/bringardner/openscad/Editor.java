@@ -47,6 +47,8 @@ import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 
@@ -59,7 +61,8 @@ import org.fife.ui.autocomplete.DefaultCompletionProvider;
 import org.fife.ui.autocomplete.ShorthandCompletion;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
-import com.bringardner.polygon.PolygonFrame;
+import com.bringardner.openscad.polygon.PolygonFrame;
+import com.bringardner.openscad.polygon.PolygonVisitorImpl;
 
 
 public class Editor extends JFrame {
@@ -116,7 +119,7 @@ public class Editor extends JFrame {
 
 		if( procs.size() == 1) {
 			Object[] options = { "Exit Application", "No, Don't exit" };
-			
+
 			int ret = JOptionPane.showOptionDialog(p, "Closing this window will cause the application to exit.\nClose anyway?", "Warning",
 					JOptionPane.OK_CANCEL_OPTION, 
 					JOptionPane.QUESTION_MESSAGE, 
@@ -185,7 +188,7 @@ public class Editor extends JFrame {
 				}
 			}
 		}
-		
+
 
 		Editor frame = new Editor();
 		if( procs.size() > 0 ) {
@@ -204,7 +207,7 @@ public class Editor extends JFrame {
 				}
 			}
 		}
-		
+
 		register(frame);
 
 		EventQueue.invokeLater(new Runnable() {
@@ -279,14 +282,14 @@ public class Editor extends JFrame {
 		});
 		mnFile.add(mntmSaveAs);
 
-		JMenuItem mntmReload = new JMenuItem("Reload");
-		mntmReload.addActionListener(new ActionListener() {
+		JMenuItem mntmReload1 = new JMenuItem("Reload");
+		mntmReload1.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionReload();
 			}
 		});
 
-		mnFile.add(mntmReload);
+		mnFile.add(mntmReload1);
 
 
 		JMenuItem mntmPreferences = new JMenuItem("Preferences");
@@ -295,11 +298,11 @@ public class Editor extends JFrame {
 				actionPreferences();
 			}
 		});
-		
+
 		JSeparator separator_1 = new JSeparator();
 		mnFile.add(separator_1);
 		mnFile.add(mntmPreferences);
-		
+
 		JMenuItem mntmOpenPolygonDesign = new JMenuItem("Open Polygon Design Window");
 		mntmOpenPolygonDesign.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -452,16 +455,17 @@ public class Editor extends JFrame {
 		contentPane.add(scrollPane, BorderLayout.CENTER);
 		editorPane.setLineWrap(false);
 		editorPane.setCodeFoldingEnabled(true);
+
 		editorPane.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
 				System.out.println("b="+e.getButton());
 				if( e.getButton() == MouseEvent.BUTTON3) {
-					String text = textAtCurrrentPosition();
-					System.out.println("text = "+text);
+					editorPane.setCaretPosition(editorPane.viewToModel(e.getPoint()));
 				}
 			}
 		});
+
 		editorPane.addKeyListener(new KeyAdapter() {
 			private FindDialog findDialog;
 
@@ -554,13 +558,41 @@ public class Editor extends JFrame {
 
 		});
 
-		mntmReload = new JMenuItem("Reload");
-		mntmReload.addActionListener(new ActionListener() {
+		JMenuItem mntmReload2 = new JMenuItem("Reload");
+		mntmReload2.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionReload();
 			}
 		});
-		editorPane.getPopupMenu().add(mntmReload);
+		editorPane.getPopupMenu().add(mntmReload2);
+
+		JMenuItem mntmEditPoly = new JMenuItem("Edit Polygon");
+		mntmEditPoly.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionEditPolygon();
+			}
+		});
+		editorPane.getPopupMenu().add(mntmEditPoly);
+		editorPane.getPopupMenu().addPopupMenuListener(new PopupMenuListener() {
+
+			@Override
+			public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+				String text = textAtCurrrentPosition();
+				mntmEditPoly.setEnabled( "polygon".equals(text));
+			}
+
+			@Override
+			public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void popupMenuCanceled(PopupMenuEvent e) {
+				// TODO Auto-generated method stub
+
+			}
+		});
 
 		JPanel controlPanel = new JPanel();
 		FlowLayout flowLayout = (FlowLayout) controlPanel.getLayout();
@@ -646,8 +678,41 @@ public class Editor extends JFrame {
 				}
 			}
 		});
-
 		
+
+	}
+
+	private void actionEditPolygon() {
+		Document doc = editorPane.getDocument();
+		int start = editorPane.getCaretPosition();
+		int end = doc.getLength()-start;
+		try {
+			String text = doc.getText(start, end);
+			int p1 = text.indexOf('(');
+			int p2 = text.indexOf(')');
+			System.out.println("p1="+p1+"+ p2="+p2);
+			if( p1>=0 && p2>0) {
+				String code = text.substring(p1+1,p2);
+				System.out.println("code = "+code);
+				try {
+					PolygonVisitorImpl.Polygon p = PolygonVisitorImpl.parse(code);
+					PolygonFrame pf = new PolygonFrame();
+					
+					SwingUtilities.invokeLater(()-> {
+							pf.setVisible(true);
+							pf.setPolygon(p);
+						});
+					
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				
+				
+			}
+		} catch (BadLocationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	protected void actionOpenPolygonWindow() {
@@ -1240,7 +1305,7 @@ public class Editor extends JFrame {
 		}
 
 	}
-	
+
 	private void load(File tmpFile) {
 		try {
 			originalText = new String(readFile(tmpFile));
