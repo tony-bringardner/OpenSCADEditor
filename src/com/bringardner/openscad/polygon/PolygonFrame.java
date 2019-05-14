@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 import javax.imageio.ImageIO;
 import javax.swing.DefaultComboBoxModel;
@@ -35,6 +36,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -61,7 +63,7 @@ import com.bringardner.openscad.polygon.PolygonVisitorImpl.Polygon;
 
 
 
-public class PolygonFrame extends JFrame {
+public class PolygonFrame extends JDialog {
 
 	/**
 	 * 
@@ -74,11 +76,15 @@ public class PolygonFrame extends JFrame {
 	private BufferedImage image;
 	private BufferedImage debugImage;
 	private List<List<Segment>> polygons = new ArrayList<>();
+
+	private Stack<List<List<Segment>> > undo = new Stack<>();
+	private Stack<List<List<Segment>> > redo = new Stack<>();
+
 	private List<Segment> segments = new ArrayList<>();
 	private DebugFrame debugFrame;
 	boolean debug = false;
 	private JButton btnAddPolygon;
-	
+
 
 	private JPanel drawingPanel;
 	private int currentPoint;
@@ -122,6 +128,17 @@ public class PolygonFrame extends JFrame {
 	private JPopupMenu popupPolygon;
 	private int currentPolygon=0;
 
+	boolean canceled = true;
+	
+	public String showDialog() {
+		setVisible(true);
+		//System.out.println("Ended ");
+		if( !canceled ) {
+			return lastPolygonText;
+		} else {
+			return null;
+		}
+	}
 
 	/**
 	 * Launch the application.
@@ -130,7 +147,7 @@ public class PolygonFrame extends JFrame {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					PolygonFrame frame = new PolygonFrame();
+					PolygonFrame frame = new PolygonFrame(null);
 					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -152,6 +169,11 @@ public class PolygonFrame extends JFrame {
 			point.setLocation(point2.x,point2.y);
 			ellipse.setFrame(point2.x-6,point2.y-6,12,12);//,new 
 		}
+
+		public ControlPoint makeCopy() {
+			return new ControlPoint(new Point2D.Double(point.getX(), point.getY()));
+		}
+
 	}
 
 	private static class Segment {
@@ -252,14 +274,19 @@ public class PolygonFrame extends JFrame {
 			points.get(currentPoint).update(point);
 		}
 
+
+
 	}
 
 
 
 	/**
 	 * Create the frame.
+	 * @param processManager 
 	 */
-	public PolygonFrame() {
+	public PolygonFrame(Editor editor) {
+		this.editor = editor;
+		setModal(true);
 		polygons.add(segments);
 		setIconImage(Editor.getOpenScadImage());
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -309,7 +336,7 @@ public class PolygonFrame extends JFrame {
 
 		drawingControlPanel = new JPanel();
 		controlPanel.add(drawingControlPanel);
-		
+
 		btnAddPolygon = new JButton("Add Polygon");
 		btnAddPolygon.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -317,7 +344,39 @@ public class PolygonFrame extends JFrame {
 				actionAddPolygon();
 			}
 		});
-		
+
+		btnRedo = new JButton("");
+		btnRedo.setToolTipText("Redo");
+		btnRedo.setPreferredSize(new Dimension(30, 26));
+		btnRedo.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionRedo();
+			}
+		});
+		try {
+			btnRedo.setIcon(new ImageIcon((ImageIO.read(getClass().getResource("/redo30.png")))));
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		drawingControlPanel.add(btnRedo);
+
+		btnUndo = new JButton("");
+		btnUndo.setToolTipText("Undo");
+		btnUndo.setPreferredSize(new Dimension(30, 26));
+		btnUndo.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionUndo();
+			}
+		});
+		try {
+			btnUndo.setIcon(new ImageIcon((ImageIO.read(getClass().getResource("/undo30.png")))));
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		drawingControlPanel.add(btnUndo);
+
 		drawingControlPanel.add(btnAddPolygon);
 
 		JLabel lblLineWidth = new JLabel("Line Width");
@@ -386,6 +445,24 @@ public class PolygonFrame extends JFrame {
 		drawingControlPanel.add(snapToSpinner);
 
 		controlPanel.add(loadButton);
+		
+		btnSave = new JButton("Save");
+		btnSave.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				canceled = false;
+				dispose();
+			}
+		});
+		controlPanel.add(btnSave);
+		
+		btnCancel = new JButton("Cancel");
+		btnCancel.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				canceled = true;
+				dispose();
+			}
+		});
+		controlPanel.add(btnCancel);
 
 		lblHoldTheControl = new JLabel("Hold the control key down to add points.");
 		controlPanel.add(lblHoldTheControl);
@@ -444,6 +521,8 @@ public class PolygonFrame extends JFrame {
 
 			@Override
 			protected void paintComponent(Graphics panelG) {
+				btnRedo.setEnabled(!redo.isEmpty());
+				btnUndo.setEnabled(!undo.isEmpty());
 				Graphics2D g = (Graphics2D) panelG;
 				g.setColor(Color.white);
 				g.fillRect(0, 0, getWidth(), getHeight());
@@ -474,6 +553,7 @@ public class PolygonFrame extends JFrame {
 
 					drawControls(g);
 				}
+				
 			}
 
 			private void drawControls(Graphics2D g) {
@@ -613,22 +693,25 @@ public class PolygonFrame extends JFrame {
 
 			@Override
 			public void keyTyped(KeyEvent e) {
-
-
+				//System.out.println("key typed="+e);
 			}
 
 			@Override
 			public void keyReleased(KeyEvent e) {
-				//System.out.println("key="+e);
+				//System.out.println("key= released"+e+" code="+e.getKeyCode()+" txt="+e.getKeyText(e.getKeyCode()));
 				if( e.getKeyCode() == KeyEvent.VK_CONTROL) {
 					drawingPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 					addMode = false;
+				} else if( e.getKeyCode() == KeyEvent.VK_LEFT ) {
+					actionUndo();
+				} else if( e.getKeyCode() == KeyEvent.VK_RIGHT ) {
+					actionRedo();
 				} 
-
 			}
 
 			@Override
 			public void keyPressed(KeyEvent e) {
+				//System.out.println("key pressed="+e);
 				if( e.getKeyCode() == KeyEvent.VK_CONTROL) {
 					drawingPanel.setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
 					addMode = true;
@@ -639,7 +722,7 @@ public class PolygonFrame extends JFrame {
 
 
 		drawingPanel.addMouseMotionListener(new MouseAdapter() {
-			
+
 
 			@Override
 			public void mouseMoved(MouseEvent e) {
@@ -647,19 +730,19 @@ public class PolygonFrame extends JFrame {
 				if( popupToCurve.isShowing() || popupToLine.isShowing()) {
 					return;
 				}
-
+				//addUndo();
 				currentPoint = -1;
 				currentLine = -1;
 				currentSegment = null;
 				Point2D p = new Point2D.Double(e.getX(), e.getY());
 				findPolygon(p);
-			
+
 
 				drawingPanel.updateUI();
 			}
 
 			private void findPolygon(Point2D p) {
-				
+
 				for(int pidx = 0,psz=polygons.size(); pidx < psz; pidx++) {
 					List<Segment> poly  = polygons.get(pidx);
 					for (Segment s : poly) {
@@ -700,7 +783,9 @@ public class PolygonFrame extends JFrame {
 
 						p.x +=  snapTo - (p.x % snapTo);
 						p.y +=  snapTo - (p.y % snapTo);
+
 						currentSegment.update(currentPoint, new Point2D.Double(p.x, p.y));
+
 						drawingPanel.updateUI();					
 					}
 				} else {
@@ -720,6 +805,8 @@ public class PolygonFrame extends JFrame {
 		});
 
 		drawingPanel.addMouseListener(new MouseAdapter() {
+			private List<List<Segment>> saved;
+
 			@Override
 			public void mouseEntered(MouseEvent e) {
 				lastMouse = e.getPoint();
@@ -747,7 +834,7 @@ public class PolygonFrame extends JFrame {
 						p.x +=  snapTo - (p.x % snapTo);
 						p.y +=  snapTo - (p.y % snapTo);
 						ControlPoint point = new ControlPoint(p);
-
+						addUndo();
 						if( currentSegment.points.size() < 2) {
 							currentSegment.add(point);
 							lblHoldTheControl.setVisible(false);
@@ -782,12 +869,19 @@ public class PolygonFrame extends JFrame {
 						}
 					}
 				} else if( loadedImage == null ) {
-					 if( !addMode && currentSegment != null && currentPoint >= 0) {
+					if( !addMode && currentSegment != null && currentPoint >= 0) {
+						saved = cloneCurrent();
+						
 						selected = true;
 					} else {
+						if( selected) {
+							throw new RuntimeException("Here");
+						}
 						selected = false;
+						
 					}
-					 if(!addMode && !selected && e.getButton()==3) {
+					
+					if(!addMode && !selected && e.getButton()==3) {
 						popupPolygon.show(PolygonFrame.this, lastMouse.x, lastMouse.y);	
 					} 
 					drawingPanel.updateUI();
@@ -798,6 +892,12 @@ public class PolygonFrame extends JFrame {
 			public void mouseReleased(MouseEvent e) {
 				lastMouse = e.getPoint();
 				selected = false;
+				if( saved != null ) {
+					if( !saved.equals(polygons)) {
+						undo.push(saved);
+					}
+				}
+				saved = null;
 				drawingPanel.updateUI();
 			}
 
@@ -896,11 +996,48 @@ public class PolygonFrame extends JFrame {
 
 	}
 
+
+	private List<List<Segment>> cloneCurrent() {
+		List<List<Segment>> newp = new ArrayList<>();
+		for (List<Segment> list1 : polygons) {
+			List<Segment> list2 = new ArrayList<>();
+			ControlPoint cp1 = null;
+
+			for (Segment segment : list1) {
+				Segment newSeg = new Segment();
+				newSeg.type = segment.type;
+				if( segment.points.size()>0) {
+					if( cp1 == null) {
+						cp1 = segment.points.get(0).makeCopy();
+					}
+
+					newSeg.add(cp1);
+					for (int sidx = 1, ssz = segment.points.size(); sidx < ssz; sidx++) {
+						cp1 = segment.points.get(sidx).makeCopy();
+						newSeg.add(cp1);
+					}
+				}
+				list2.add(newSeg);
+			}
+			newp.add(list2);
+		}
+		return newp;
+	}
+
+
+	private void addUndo() {
+		// clone poly
+		List<List<Segment>> newp = cloneCurrent();
+		// add to undo
+		undo.push(newp);
+	}
+
 	private void actionAddPolygon() {
+		addUndo();
 		if( lastMouse == null ) {
 			lastMouse = new Point(100, 100);
 		}
-	
+
 		List<Segment> tmp = new ArrayList<>();
 		if( segments.size() == 0 ) {
 			tmp = segments;
@@ -966,8 +1103,26 @@ public class PolygonFrame extends JFrame {
 
 	}
 
+	/*
+	 * KO
+	 * DIS
+	 * DOW
+	 * GS
+	 * HD
+	 * JNJ
+	 * MCD *
+	 * MSFT *
+	 * NKE *
+	 * TRV *
+	 * UNH ?
+	 * UTX *
+	 * V	*
+	 * WMT **
+	 * 
+	 */
 	private void actionClear() {
-		
+		textArea.setText("");
+
 		if( polygons.size() <= 1) {
 			segments.clear();
 			if( snapTo == 1 ) {
@@ -975,11 +1130,12 @@ public class PolygonFrame extends JFrame {
 			}
 
 		} else {
+			addUndo();
 			polygons.remove(currentPolygon);
 			currentPolygon = 0;
 			segments = polygons.get(currentPolygon);
 		}
-		
+
 		loadedImage = null;
 		debugImage = null;
 		setThresholdVisbility();
@@ -994,41 +1150,60 @@ public class PolygonFrame extends JFrame {
 	}
 
 	private void drawImageFromPoints(Graphics2D g1,boolean close,List<Segment> poly) {
-			GeneralPath path = new GeneralPath();
+		GeneralPath path = new GeneralPath();
 
-			Segment last = null;
-			for (int idx = 0, sz = poly.size(); idx < sz; idx++) {
-				Segment s = poly.get(idx);
-				s.recalcPaths();
+		Segment last = null;
+		for (int idx = 0, sz = poly.size(); idx < sz; idx++) {
+			Segment s = poly.get(idx);
+			s.recalcPaths();
 
-				if( last != null  && last.points.size()>0 && s.points.size()>0) {
-					Point2D a = last.points.get(last.points.size()-1).point;
-					Point2D b = s.points.get(0).point;
-					g1.drawLine((int)a.getX(), (int)a.getY(), (int)b.getX(), (int)b.getY());
-				} else {
+			if( last != null  && last.points.size()>0 && s.points.size()>0) {
+				Point2D a = last.points.get(last.points.size()-1).point;
+				Point2D b = s.points.get(0).point;
+				g1.drawLine((int)a.getX(), (int)a.getY(), (int)b.getX(), (int)b.getY());
+			} else {
+				if( s.points.size()>0) {
 					Point2D p = s.points.get(0).point;
 					path.moveTo(p.getX(), p.getY());
 				}
-
-				drawSegment(path,s);
-				last = s;
 			}
 
-			if( close ) {
-				if( chckbxClosePath.isSelected()) {
-					if( poly.size()>1) {
-						path.closePath();
-					}
+			drawSegment(path,s);
+			last = s;
+		}
+
+		if( close ) {
+			if( chckbxClosePath.isSelected()) {
+				if( poly.size()>1) {
+					path.closePath();
 				}
 			}
-			g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,capComboBox.getSelectedIndex(), joinComboBox.getSelectedIndex()));
-			g1.draw(path);
+		}
+		g1.setStroke(new BasicStroke((int) lineWidthSpinner.getValue()+2,capComboBox.getSelectedIndex(), joinComboBox.getSelectedIndex()));
+		g1.draw(path);
+	}
+
+	private void actionRedo() {
+		if( !redo.isEmpty()) {
+			undo.push(polygons);
+			polygons = redo.pop();
+			drawingPanel.updateUI();
+		}
+	}
+
+	private void actionUndo() {
+		if( !undo.isEmpty()) {
+			redo.push(polygons);
+			polygons = undo.pop();
+			drawingPanel.updateUI();
+		}
 	}
 
 	private void actionRemoveControllPoint() {
 		if( currentSegment != null ) {
 			if( currentSegment.type == SegmentType.Curve) {
 				if( currentSegment.points.size()>3) {
+					addUndo();
 					currentSegment.remove(1);
 					drawingPanel.updateUI();
 				}
@@ -1041,6 +1216,7 @@ public class PolygonFrame extends JFrame {
 		if( currentSegment != null ) {
 			if( currentSegment.type == SegmentType.Curve) {
 				if( currentSegment.points.size()==3) {
+					addUndo();
 					Point2D a = currentSegment.points.get(1).point;
 					Point2D b = currentSegment.points.get(2).point;
 					Line2D line = new Line2D.Double(a, b);
@@ -1048,6 +1224,7 @@ public class PolygonFrame extends JFrame {
 					double cy = line.getBounds2D().getCenterY();
 
 					debugPoint = new Point2D.Double(cx, cy);
+
 					currentSegment.points.add(2, new ControlPoint(debugPoint));
 					drawingPanel.updateUI();
 				}
@@ -1058,9 +1235,11 @@ public class PolygonFrame extends JFrame {
 	private void actionConvertToLine() {
 		if( currentSegment != null ) {
 			if( currentSegment.type == SegmentType.Curve) {
+				addUndo();
 				currentSegment.type = SegmentType.Line;
 
 				while( currentSegment.points.size()>2) {
+
 					currentSegment.points.remove(1);	
 				}
 				drawingPanel.updateUI();
@@ -1073,6 +1252,7 @@ public class PolygonFrame extends JFrame {
 		//System.out.println("Convert1");
 		if( currentLine >= 0 && currentSegment != null) {
 			if( currentSegment.type == SegmentType.Line) {
+				addUndo();
 				Line2D line = new Line2D.Double(currentSegment.points.get(0).point, currentSegment.points.get(1).point);
 				double cx = line.getBounds().getCenterX();
 				double cy = line.getBounds().getCenterY();
@@ -1126,6 +1306,12 @@ public class PolygonFrame extends JFrame {
 
 	private JPanel debugPanel;
 	private int convexity=0;
+	private Editor editor;
+	private JButton btnRedo;
+	private JButton btnUndo;
+	private String lastPolygonText;
+	private JButton btnSave;
+	private JButton btnCancel;
 
 
 	public  List<Point>  removeDuplicates(Graphics2D g, List<Point> points) {
@@ -1202,15 +1388,15 @@ public class PolygonFrame extends JFrame {
 	private void processMultiPolygons() {
 		int tmp = currentPolygon;
 		currentPolygon = -1;
-		
-		
+
+
 		List<List<Point>> p1 = new ArrayList<>();
-		
-		
-		
+
+
+
 		for(int pidx = 0,psz=polygons.size(); pidx < psz; pidx++) {
 			List<Segment> poly = polygons.get(pidx);
-			
+
 			BufferedImage image1 = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
 
 			Graphics2D g1 = (Graphics2D) image1.getGraphics();
@@ -1220,7 +1406,7 @@ public class PolygonFrame extends JFrame {
 			drawImageFromPoints(g1, true, poly);
 			p1.add(processPolygons(image1, g1));
 		}
-		
+
 		currentPolygon = tmp;
 		List<Point> points = new ArrayList<>();
 		for (List<Point> list : p1) {
@@ -1240,9 +1426,9 @@ public class PolygonFrame extends JFrame {
 			}
 		}
 		setText(points, paths);
-		
+
 	}
-	
+
 	private List<Point> processPolygons(BufferedImage image1,Graphics2D dbg ) {
 		List<Point> ret = null;
 		boolean[][] bimg = toBoolean(image1);
@@ -1294,8 +1480,24 @@ public class PolygonFrame extends JFrame {
 
 		return ret;
 	}
-	
+
 	private void actionPolygon() {
+		if( polygons.size() == 0 ) {
+			return;
+		} else {
+			boolean ok = false;
+			for (List<Segment> p : polygons) {
+				if( p.size() >0 ) {
+					ok = true;
+					break;
+				}
+			}
+			if( !ok) {
+				return;
+			}
+		}
+
+
 		textArea.setText("");
 		if( image != null ) {
 			debugImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
@@ -1335,7 +1537,7 @@ public class PolygonFrame extends JFrame {
 							processMultiPolygons();
 							return;
 						}
-						
+
 						Graphics2D g1 = (Graphics2D) image1.getGraphics();
 						g1.setColor(Color.white);
 						g1.fillRect(0, 0, image1.getWidth(), image1.getHeight());
@@ -1354,7 +1556,8 @@ public class PolygonFrame extends JFrame {
 					List<Rectangle> diff = ImageDiff.findEdges(bimg, p, 2, 2);
 
 					if( diff.size()== 0 ) {
-						throw new RuntimeException("No Image data");
+						return;
+						//throw new RuntimeException("No Image data");
 					}
 
 					int translate = 0;
@@ -1523,6 +1726,16 @@ public class PolygonFrame extends JFrame {
 		}
 		buf.append("\n\t]\n);");
 
+		if( editor != null ) {
+			try {
+				editor.getProc().updatePreviewFile(buf.toString());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		lastPolygonText = buf.toString();
+		
 		SwingUtilities.invokeLater(new Runnable() {
 
 			@Override
@@ -1533,10 +1746,11 @@ public class PolygonFrame extends JFrame {
 
 
 	}
+	
 
 	private void setText(List<Point> list, List<List<Integer>> paths) {
 		StringBuilder buf = new StringBuilder();
-		
+
 		buf.append("\npolygon( points=[");
 
 		int minX = 0;
@@ -1567,9 +1781,9 @@ public class PolygonFrame extends JFrame {
 			if( idx1 > 0 ) {
 				buf.append(",");
 			}
-			
+
 			List<Integer> path = paths.get(idx1);
-			
+
 			buf.append("[");
 			for (int idx = 0, sz = path.size(); idx < sz; idx++) {
 				if( idx > 0 ) {
@@ -1581,16 +1795,23 @@ public class PolygonFrame extends JFrame {
 				}			
 			}
 			buf.append("]");
-			
-				
+
+
 		}
 		if( convexity>0) {
 			buf.append("],convexity="+convexity+");");
 		} else {
 			buf.append("]);");
 		}
-		
-		
+
+		if( editor != null ) {
+			try {
+				editor.getProc().updatePreviewFile(buf.toString());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
 		SwingUtilities.invokeLater(new Runnable() {
 
 			@Override
@@ -1849,7 +2070,25 @@ public class PolygonFrame extends JFrame {
 		}
 	}
 
-	public void setPolygon(Polygon p) {
+	public void setPolygon(final Polygon p) {
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				while(drawingPanel.getWidth() == 0) {
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+					}
+				};
+
+				setMyPolygon(p);
+
+			}
+		}).start();
+	}
+
+	private void setMyPolygon(Polygon p) {
 		this.convexity = p.con.intValue();
 		if( p.points == null || p.points.size()==0) {
 			return;
@@ -1858,14 +2097,14 @@ public class PolygonFrame extends JFrame {
 		segments = null;
 		double maxX = 0;
 		double maxY = 0;
-		
+
 		for (Point2D pp : p.points) {
 			maxX = Math.max(maxX, pp.getX());
 			maxY = Math.max(maxY, pp.getY());
 		}
 		int x = (int) ((int) (drawingPanel.getWidth()/2)-(maxX/2));
 		int y = (int) ((int) (drawingPanel.getHeight()/2)-(maxY/2));
-		
+
 		for (Point2D pp : p.points) {
 			int xx = 	(int) (pp.getX() +x);
 			int yy = 	(int) (pp.getY() +y);
@@ -1873,7 +2112,7 @@ public class PolygonFrame extends JFrame {
 			//xx +=  snapTo - (xx % snapTo);
 			pp.setLocation(xx, yy);
 		}
-		
+
 		if( p.paths == null || p.paths.size()==0) {
 			ControlPoint cp = new ControlPoint(p.points.get(0));
 			segments = new ArrayList<>();  
@@ -1885,12 +2124,12 @@ public class PolygonFrame extends JFrame {
 				s.add(cp2);
 				segments.add(s);
 				cp = cp2;
-				
+
 			}
 		} else {
 			for (List<java.lang.Double> path : p.paths) {
 				ControlPoint cp = new ControlPoint(p.points.get(path.get(0).intValue()));
-				
+
 				segments = new ArrayList<>();  
 				polygons.add(segments);
 				for (int idx = 1, sz = path.size(); idx < sz; idx++) {

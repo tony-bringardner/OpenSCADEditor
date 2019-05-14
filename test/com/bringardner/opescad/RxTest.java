@@ -54,6 +54,7 @@ class RxTest {
 	}
 
 	//@Test
+	@SuppressWarnings("unused")
 	void test2() {
 		Pattern p1 = Pattern.compile("points\\s?=\\s?\\[.*\\].*",Pattern.DOTALL| Pattern.MULTILINE);
 		p1 = Pattern.compile("points\\s?=\\s?\\[(?<pair>\\[[0-9]*[,][0-9]+\\][,]?)+]*",Pattern.DOTALL| Pattern.MULTILINE);

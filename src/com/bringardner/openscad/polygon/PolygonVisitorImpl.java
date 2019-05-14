@@ -118,7 +118,7 @@ public class PolygonVisitorImpl extends PolygonBaseVisitor<Object> {
 	}
 
 	public static Polygon parse(String code) {
-		System.out.println("code="+code);
+		//System.out.println("code="+code);
 		ANTLRInputStream input = new ANTLRInputStream(code);
 		PolygonLexer lex = new PolygonLexer(input);
 		TokenStream tokens = new CommonTokenStream(lex);
@@ -149,7 +149,9 @@ public class PolygonVisitorImpl extends PolygonBaseVisitor<Object> {
 		Polygon ret = visitor.visitCode(parser.code());
 
 
-		System.out.println("Done sz="+ret.points.size());
+		/*
+		 System.out.println("Done sz="+ret.points.size());
+		 
 		for (Point2D pp : ret.points) {
 			System.out.println(pp);
 		}
@@ -164,7 +166,7 @@ public class PolygonVisitorImpl extends PolygonBaseVisitor<Object> {
 		}
 
 		System.out.println("Done con="+ret.con);
-
+	*/
 
 		return ret;
 	}

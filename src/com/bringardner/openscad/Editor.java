@@ -459,7 +459,7 @@ public class Editor extends JFrame {
 		editorPane.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
-				System.out.println("b="+e.getButton());
+				//System.out.println("b="+e.getButton());
 				if( e.getButton() == MouseEvent.BUTTON3) {
 					editorPane.setCaretPosition(editorPane.viewToModel(e.getPoint()));
 				}
@@ -678,36 +678,56 @@ public class Editor extends JFrame {
 				}
 			}
 		});
-		
+
 
 	}
 
 	private void actionEditPolygon() {
 		Document doc = editorPane.getDocument();
-		int start = editorPane.getCaretPosition();
+		int start = textAtCurrrentPositionIndex();
 		int end = doc.getLength()-start;
 		try {
 			String text = doc.getText(start, end);
 			int p1 = text.indexOf('(');
-			int p2 = text.indexOf(')');
-			System.out.println("p1="+p1+"+ p2="+p2);
-			if( p1>=0 && p2>0) {
-				String code = text.substring(p1+1,p2);
-				System.out.println("code = "+code);
+			if( p1 < 0 ) {
+				return;
+			}
+			end = text.indexOf(')');
+			if( end <0 ) {
+				return;
+			}
+			
+			//System.out.println("start="+start+"p1="+p1+" end="+end);
+			if( p1>=0 && end>0) {
+				String code = text.substring(p1+1,end);
+				//System.out.println("code = "+code);
 				try {
 					PolygonVisitorImpl.Polygon p = PolygonVisitorImpl.parse(code);
-					PolygonFrame pf = new PolygonFrame();
-					
-					SwingUtilities.invokeLater(()-> {
-							pf.setVisible(true);
-							pf.setPolygon(p);
-						});
-					
+					PolygonFrame pf = new PolygonFrame(this);
+
+					pf.setPolygon(p);
+					String res= pf.showDialog();
+					//System.out.println("res="+res);
+					if( res != null && res.length()>12) {
+						int p2 = text.indexOf(';', end);
+						if( p2 > 0 ) {
+							end = p2+1;
+						}
+						try {
+							doc.remove(start, end);
+							doc.insertString(start, res, null);
+						} catch (BadLocationException e) {
+							e.printStackTrace();
+						}
+					}
+					actionPreview();
+
 				} catch (Exception e) {
 					e.printStackTrace();
+					logError(e, "Can't parse this code");
 				}
-				
-				
+
+
 			}
 		} catch (BadLocationException e) {
 			// TODO Auto-generated catch block
@@ -716,8 +736,13 @@ public class Editor extends JFrame {
 	}
 
 	protected void actionOpenPolygonWindow() {
-		new PolygonFrame().setVisible(true);
+		PolygonFrame pf = new PolygonFrame(this);
+		String res = pf.showDialog();
+		if( res != null ) {
+			editorPane.append(res);
 
+		}
+		actionPreview();
 	}
 
 	protected void actionNewWindow() {
@@ -935,18 +960,13 @@ public class Editor extends JFrame {
 		String ret = null;
 		Document doc = editorPane.getDocument();
 		int len = doc.getLength();
-		int start = editorPane.getCaretPosition();
-		int end = start;
+		int start = textAtCurrrentPositionIndex();
+		int end = editorPane.getCaretPosition();
 		try {
-			while(start >=0 && Character.isJavaIdentifierPart(doc.getText(start, 1).charAt(0))) {
-				start--;
-			}
 			while(end < len && Character.isJavaIdentifierPart(doc.getText(end, 1).charAt(0))) {
 				end++;
 			}
-			if( start < 0 ) {
-				start = 0;
-			}
+			//System.out.println("end="+end);
 			if( end > start ) {
 				ret = doc.getText(start,end-start).trim();
 			}
@@ -954,20 +974,32 @@ public class Editor extends JFrame {
 			e.printStackTrace();
 		}
 
-
+		//System.out.println("ret="+ret+"+start = "+start);
 		return ret;
+	}
+
+	private int textAtCurrrentPositionIndex() {
+		Document doc = editorPane.getDocument();
+		int start = editorPane.getCaretPosition();
+		//System.out.println("start 1="+start);
+		try {
+			while(start >=0 && Character.isJavaIdentifierPart(doc.getText(start, 1).charAt(0))) {
+				start--;
+			}
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		//System.out.println("start 2="+start);
+		if( start < 0 ) {
+			start = 0;
+		}
+
+		return start;
 	}
 
 	protected void actionPreview() {
 		final String code = editorPane.getText();
-		if( previewProcess == null ) {
-			synchronized (previewMutex) {
-				if( previewProcess == null ) {
-					previewProcess = new ProcessManager();
-					previewProcess.start();
-				}
-			}
-		}
+		getProc();
 		new Thread(new Runnable() {
 
 			@Override
@@ -997,6 +1029,18 @@ public class Editor extends JFrame {
 			}
 		}).start();
 
+	}
+
+	public ProcessManager getProc() {
+		if( previewProcess == null ) {
+			synchronized (previewMutex) {
+				if( previewProcess == null ) {
+					previewProcess = new ProcessManager();
+					previewProcess.start();
+				}
+			}
+		}
+		return previewProcess;
 	}
 
 	protected void actionNew() {
