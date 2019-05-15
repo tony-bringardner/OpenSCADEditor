@@ -15,6 +15,8 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -45,6 +47,8 @@ import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 
@@ -57,11 +61,15 @@ import org.fife.ui.autocomplete.DefaultCompletionProvider;
 import org.fife.ui.autocomplete.ShorthandCompletion;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
-import com.bringardner.polygon.PolygonFrame;
+import com.bringardner.openscad.polygon.PolygonFrame;
+import com.bringardner.openscad.polygon.PolygonVisitorImpl;
 
 
 public class Editor extends JFrame {
 
+	/* 
+	 * Add edit polygon to editor
+	 */
 	private static final long serialVersionUID = 1L;
 	protected static final Preferences prefs = Preferences.userNodeForPackage(Editor.class);
 	private static final String KEY_SCREEN_LOCATION = "Location";
@@ -111,7 +119,7 @@ public class Editor extends JFrame {
 
 		if( procs.size() == 1) {
 			Object[] options = { "Exit Application", "No, Don't exit" };
-			
+
 			int ret = JOptionPane.showOptionDialog(p, "Closing this window will cause the application to exit.\nClose anyway?", "Warning",
 					JOptionPane.OK_CANCEL_OPTION, 
 					JOptionPane.QUESTION_MESSAGE, 
@@ -169,11 +177,21 @@ public class Editor extends JFrame {
 	 */
 	public static void main(String[] args) {
 
+		String tmp = prefs.get(KEY_RECENT, "");
+		if( !tmp.isEmpty()) {
+			tmp = tmp.substring(1);
+			tmp = tmp.substring(0,tmp.length()-1);
+			for (String str : tmp.split("[,]")) {
+				str = str.trim();
+				if( !str.isEmpty()) {
+					recentFiles.add(str);
+				}
+			}
+		}
 
 
 		Editor frame = new Editor();
 		if( procs.size() > 0 ) {
-
 			Editor last = procs.get(procs.size()-1);
 			Rectangle b = last.getBounds();
 			b.x+=50;
@@ -181,14 +199,6 @@ public class Editor extends JFrame {
 			frame.lastSize = b;
 			frame.setBounds(b);			
 		} else {
-			String tmp = prefs.get(KEY_RECENT, "");
-			if( !tmp.isEmpty()) {
-				tmp = tmp.substring(1);
-				tmp = tmp.substring(0,tmp.length()-1);
-				for (String str : tmp.split("[,]")) {
-					recentFiles.add(str.trim());
-				}
-			}
 			tmp = prefs.get(KEY_SCREEN_LOCATION, "");
 			if( !tmp.isEmpty()) {
 				String parts[] = tmp.split("[,]");
@@ -197,6 +207,7 @@ public class Editor extends JFrame {
 				}
 			}
 		}
+
 		register(frame);
 
 		EventQueue.invokeLater(new Runnable() {
@@ -271,14 +282,14 @@ public class Editor extends JFrame {
 		});
 		mnFile.add(mntmSaveAs);
 
-		JMenuItem mntmReload = new JMenuItem("Reload");
-		mntmReload.addActionListener(new ActionListener() {
+		JMenuItem mntmReload1 = new JMenuItem("Reload");
+		mntmReload1.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionReload();
 			}
 		});
 
-		mnFile.add(mntmReload);
+		mnFile.add(mntmReload1);
 
 
 		JMenuItem mntmPreferences = new JMenuItem("Preferences");
@@ -287,11 +298,11 @@ public class Editor extends JFrame {
 				actionPreferences();
 			}
 		});
-		
+
 		JSeparator separator_1 = new JSeparator();
 		mnFile.add(separator_1);
 		mnFile.add(mntmPreferences);
-		
+
 		JMenuItem mntmOpenPolygonDesign = new JMenuItem("Open Polygon Design Window");
 		mntmOpenPolygonDesign.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -444,6 +455,17 @@ public class Editor extends JFrame {
 		contentPane.add(scrollPane, BorderLayout.CENTER);
 		editorPane.setLineWrap(false);
 		editorPane.setCodeFoldingEnabled(true);
+
+		editorPane.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				//System.out.println("b="+e.getButton());
+				if( e.getButton() == MouseEvent.BUTTON3) {
+					editorPane.setCaretPosition(editorPane.viewToModel(e.getPoint()));
+				}
+			}
+		});
+
 		editorPane.addKeyListener(new KeyAdapter() {
 			private FindDialog findDialog;
 
@@ -536,13 +558,41 @@ public class Editor extends JFrame {
 
 		});
 
-		mntmReload = new JMenuItem("Reload");
-		mntmReload.addActionListener(new ActionListener() {
+		JMenuItem mntmReload2 = new JMenuItem("Reload");
+		mntmReload2.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionReload();
 			}
 		});
-		editorPane.getPopupMenu().add(mntmReload);
+		editorPane.getPopupMenu().add(mntmReload2);
+
+		JMenuItem mntmEditPoly = new JMenuItem("Edit Polygon");
+		mntmEditPoly.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionEditPolygon();
+			}
+		});
+		editorPane.getPopupMenu().add(mntmEditPoly);
+		editorPane.getPopupMenu().addPopupMenuListener(new PopupMenuListener() {
+
+			@Override
+			public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+				String text = textAtCurrrentPosition();
+				mntmEditPoly.setEnabled( "polygon".equals(text));
+			}
+
+			@Override
+			public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void popupMenuCanceled(PopupMenuEvent e) {
+				// TODO Auto-generated method stub
+
+			}
+		});
 
 		JPanel controlPanel = new JPanel();
 		FlowLayout flowLayout = (FlowLayout) controlPanel.getLayout();
@@ -632,9 +682,67 @@ public class Editor extends JFrame {
 
 	}
 
-	protected void actionOpenPolygonWindow() {
-		new PolygonFrame().setVisible(true);
+	private void actionEditPolygon() {
+		Document doc = editorPane.getDocument();
+		int start = textAtCurrrentPositionIndex();
+		int end = doc.getLength()-start;
+		try {
+			String text = doc.getText(start, end);
+			int p1 = text.indexOf('(');
+			if( p1 < 0 ) {
+				return;
+			}
+			end = text.indexOf(')');
+			if( end <0 ) {
+				return;
+			}
+			
+			//System.out.println("start="+start+"p1="+p1+" end="+end);
+			if( p1>=0 && end>0) {
+				String code = text.substring(p1+1,end);
+				//System.out.println("code = "+code);
+				try {
+					PolygonVisitorImpl.Polygon p = PolygonVisitorImpl.parse(code);
+					PolygonFrame pf = new PolygonFrame(this);
 
+					pf.setPolygon(p);
+					String res= pf.showDialog();
+					//System.out.println("res="+res);
+					if( res != null && res.length()>12) {
+						int p2 = text.indexOf(';', end);
+						if( p2 > 0 ) {
+							end = p2+1;
+						}
+						try {
+							doc.remove(start, end);
+							doc.insertString(start, res, null);
+						} catch (BadLocationException e) {
+							e.printStackTrace();
+						}
+					}
+					actionPreview();
+
+				} catch (Exception e) {
+					e.printStackTrace();
+					logError(e, "Can't parse this code");
+				}
+
+
+			}
+		} catch (BadLocationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	protected void actionOpenPolygonWindow() {
+		PolygonFrame pf = new PolygonFrame(this);
+		String res = pf.showDialog();
+		if( res != null ) {
+			editorPane.append(res);
+
+		}
+		actionPreview();
 	}
 
 	protected void actionNewWindow() {
@@ -852,18 +960,13 @@ public class Editor extends JFrame {
 		String ret = null;
 		Document doc = editorPane.getDocument();
 		int len = doc.getLength();
-		int start = editorPane.getCaretPosition();
-		int end = start;
+		int start = textAtCurrrentPositionIndex();
+		int end = editorPane.getCaretPosition();
 		try {
-			while(start >=0 && Character.isJavaIdentifierPart(doc.getText(start, 1).charAt(0))) {
-				start--;
-			}
 			while(end < len && Character.isJavaIdentifierPart(doc.getText(end, 1).charAt(0))) {
 				end++;
 			}
-			if( start < 0 ) {
-				start = 0;
-			}
+			//System.out.println("end="+end);
 			if( end > start ) {
 				ret = doc.getText(start,end-start).trim();
 			}
@@ -871,20 +974,32 @@ public class Editor extends JFrame {
 			e.printStackTrace();
 		}
 
-
+		//System.out.println("ret="+ret+"+start = "+start);
 		return ret;
+	}
+
+	private int textAtCurrrentPositionIndex() {
+		Document doc = editorPane.getDocument();
+		int start = editorPane.getCaretPosition();
+		//System.out.println("start 1="+start);
+		try {
+			while(start >=0 && Character.isJavaIdentifierPart(doc.getText(start, 1).charAt(0))) {
+				start--;
+			}
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		//System.out.println("start 2="+start);
+		if( start < 0 ) {
+			start = 0;
+		}
+
+		return start;
 	}
 
 	protected void actionPreview() {
 		final String code = editorPane.getText();
-		if( previewProcess == null ) {
-			synchronized (previewMutex) {
-				if( previewProcess == null ) {
-					previewProcess = new ProcessManager();
-					previewProcess.start();
-				}
-			}
-		}
+		getProc();
 		new Thread(new Runnable() {
 
 			@Override
@@ -914,6 +1029,18 @@ public class Editor extends JFrame {
 			}
 		}).start();
 
+	}
+
+	public ProcessManager getProc() {
+		if( previewProcess == null ) {
+			synchronized (previewMutex) {
+				if( previewProcess == null ) {
+					previewProcess = new ProcessManager();
+					previewProcess.start();
+				}
+			}
+		}
+		return previewProcess;
 	}
 
 	protected void actionNew() {
@@ -957,15 +1084,6 @@ public class Editor extends JFrame {
 				});
 				recentMenu.add(item);
 			}
-		}
-
-		String val = recentFiles.toString();
-		prefs.put(KEY_RECENT, val);
-
-		try {
-			prefs.flush();
-		} catch (BackingStoreException e) {
-			logError(e, "save recent");
 		}
 	}
 
@@ -1144,6 +1262,7 @@ public class Editor extends JFrame {
 		try {
 			originalText = editorPane.getText();
 			backupManager.save(tmp, editorPane.getText());
+			saveRecentFiles(tmp.getAbsolutePath());
 			setMyTitle(tmp.getName());
 		} catch (IOException e) {
 			logError(e, "Can't save to "+tmp);
@@ -1216,15 +1335,28 @@ public class Editor extends JFrame {
 		return ret;
 	}
 
+	private void saveRecentFiles(String tmp) {
+		recentFiles.remove(tmp);
+		recentFiles.add(0, tmp);
+
+		String val = recentFiles.toString();
+		prefs.put(KEY_RECENT, val);
+
+		try {
+			prefs.flush();
+		} catch (BackingStoreException e) {
+			logError(e, "save recent");
+		}
+
+	}
+
 	private void load(File tmpFile) {
 		try {
 			originalText = new String(readFile(tmpFile));
 			editorPane.setText(originalText);
 			editorPane.setCaretPosition(1);
 			file = tmpFile;
-			String tmp = file.getAbsolutePath();
-			recentFiles.remove(tmp);
-			recentFiles.add(0, tmp);
+			saveRecentFiles(file.getAbsolutePath());
 			buildMenu();
 			new Thread(new Runnable() {
 
